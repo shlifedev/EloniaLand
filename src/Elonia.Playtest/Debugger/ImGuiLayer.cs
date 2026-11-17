@@ -9,7 +9,7 @@ namespace Elonia.Playtest;
 internal sealed class ImGuiLayer : IDisposable
 {
     private const string FONT_FILE_NAME = "Galmuri11.ttf";
-    private const float FONT_SIZE = 12.0f;
+    private const float FONT_SIZE = 14.0f;
 
     public ImGuiLayer()
     {
