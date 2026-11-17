@@ -1,8 +1,9 @@
+using System;
 using System.Text;
 
 namespace Elonia.DataManager
 {
-    public readonly struct CellOrigin
+    public readonly struct CellOrigin : IEquatable<CellOrigin>
     {
         public string Workbook { get; }
         public string Sheet { get; }
@@ -23,6 +24,23 @@ namespace Elonia.DataManager
         public override string ToString()
         {
             return Workbook + " / " + Sheet + "!" + Address;
+        }
+
+        public bool Equals(CellOrigin other)
+        {
+            return Row == other.Row && Column == other.Column && Sheet == other.Sheet && Workbook == other.Workbook;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is CellOrigin other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            int hash = Row * 397 + Column;
+            hash = hash * 31 + (Sheet == null ? 0 : Sheet.GetHashCode());
+            return hash * 31 + (Workbook == null ? 0 : Workbook.GetHashCode());
         }
 
         public static string GetColumnLetters(int column)

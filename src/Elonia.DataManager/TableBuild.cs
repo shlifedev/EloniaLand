@@ -17,15 +17,18 @@ namespace Elonia.DataManager
     {
         public DiagnosticBag Diagnostics { get; }
 
+        public IReadOnlyList<Workbook> Workbooks { get; }
+
         public GeneratedOutput? OutputOrNull { get; }
 
         public IReadOnlyList<TableData> Tables { get; }
         public IReadOnlyList<EnumDefinition> Enums { get; }
         public bool IsSuccess => OutputOrNull != null;
 
-        public TableBuildResult(DiagnosticBag diagnostics, GeneratedOutput? outputOrNull, IReadOnlyList<TableData> tables, IReadOnlyList<EnumDefinition> enums)
+        public TableBuildResult(DiagnosticBag diagnostics, IReadOnlyList<Workbook> workbooks, GeneratedOutput? outputOrNull, IReadOnlyList<TableData> tables, IReadOnlyList<EnumDefinition> enums)
         {
             Diagnostics = diagnostics;
+            Workbooks = workbooks;
             OutputOrNull = outputOrNull;
             Tables = tables;
             Enums = enums;
@@ -130,7 +133,7 @@ namespace Elonia.DataManager
             }
 
             GeneratedOutput? outputOrNull = diagnostics.HasErrors ? null : Generate(schemas, tables, sortedEnums, options);
-            return new TableBuildResult(diagnostics, outputOrNull, tables, sortedEnums);
+            return new TableBuildResult(diagnostics, workbooks, outputOrNull, tables, sortedEnums);
         }
 
         private static GeneratedOutput Generate(List<TableSchema> schemas, List<TableData> tables, List<EnumDefinition> enums, TableBuildOptions options)

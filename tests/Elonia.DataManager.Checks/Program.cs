@@ -34,6 +34,7 @@ public static partial class Program
         Run(CheckManifest);
         Run(CheckCommitter);
         Run(CheckXlsxFiles);
+        Run(CheckWorkspace);
         Run(CheckGameData);
 #if HAS_FIXTURE
         Run(CheckRoundTrip);
