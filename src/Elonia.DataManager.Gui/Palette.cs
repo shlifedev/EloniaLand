@@ -1,22 +1,18 @@
-using System.Numerics;
+using Avalonia.Media;
 
 namespace Elonia.DataManager.Gui;
 
 internal static class Palette
 {
-    public static readonly Vector4 ERROR_TEXT = new Vector4(1.00f, 0.45f, 0.42f, 1.0f);
-    public static readonly Vector4 WARNING_TEXT = new Vector4(1.00f, 0.82f, 0.35f, 1.0f);
-    public static readonly Vector4 GOOD_TEXT = new Vector4(0.55f, 0.90f, 0.60f, 1.0f);
-    public static readonly Vector4 MUTED_TEXT = new Vector4(0.55f, 0.56f, 0.62f, 1.0f);
-    public static readonly Vector4 HEADER_TEXT = new Vector4(0.60f, 0.82f, 1.00f, 1.0f);
+    public static readonly IBrush ERROR_TEXT = new SolidColorBrush(Color.FromRgb(229, 72, 77));
+    public static readonly IBrush WARNING_TEXT = new SolidColorBrush(Color.FromRgb(214, 158, 22));
+    public static readonly IBrush GOOD_TEXT = new SolidColorBrush(Color.FromRgb(63, 164, 91));
+    public static readonly IBrush MUTED_TEXT = new SolidColorBrush(Color.FromRgb(128, 132, 140));
 
-    public static readonly Vector4 ERROR_CELL = new Vector4(0.52f, 0.14f, 0.14f, 1.0f);
-    public static readonly Vector4 WARNING_CELL = new Vector4(0.46f, 0.36f, 0.08f, 1.0f);
-    public static readonly Vector4 HEADER_CELL = new Vector4(0.16f, 0.19f, 0.25f, 1.0f);
-    public static readonly Vector4 FOCUSED_CELL = new Vector4(0.20f, 0.38f, 0.68f, 1.0f);
+    public static readonly IBrush ERROR_CELL = new SolidColorBrush(Color.FromArgb(150, 214, 55, 55));
+    public static readonly IBrush WARNING_CELL = new SolidColorBrush(Color.FromArgb(150, 222, 170, 30));
+    public static readonly IBrush HEADER_CELL = new SolidColorBrush(Color.FromArgb(48, 90, 140, 230));
+    public static readonly IBrush NO_CELL = Brushes.Transparent;
 
-    public static readonly Vector4 FOCUSED_ERROR_CELL = new Vector4(0.86f, 0.24f, 0.22f, 1.0f);
-    public static readonly Vector4 FOCUSED_WARNING_CELL = new Vector4(0.78f, 0.60f, 0.10f, 1.0f);
-
-    public static readonly Raylib_cs.Color BACKGROUND = new Raylib_cs.Color(24, 26, 31, 255);
+    public const double MUTED_OPACITY = 0.42;
 }

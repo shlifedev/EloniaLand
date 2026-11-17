@@ -1,19 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <AssemblyName>elonia-data-gui</AssemblyName>
     <RootNamespace>Elonia.DataManager.Gui</RootNamespace>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Elonia.DataManager/Elonia.DataManager.csproj" />
-    <PackageReference Include="Raylib-cs" Version="8.1.0" />
-    <PackageReference Include="ImGui.NET" Version="1.91.6.1" />
-    <PackageReference Include="rlImgui-cs" Version="3.2.0" />
+    <PackageReference Include="Avalonia" Version="11.3.23" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.23" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.23" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.3.13" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../Elonia.DataManager.Cli/ToolOptions.cs" Link="ToolOptions.cs" />
-    <None Include="../Elonia.Playtest/Assets/Galmuri11.ttf" Link="Assets/Galmuri11.ttf" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../Elonia.Playtest/Assets/Galmuri-OFL.txt" Link="Assets/Galmuri-OFL.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
