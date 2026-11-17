@@ -9,7 +9,9 @@ namespace Elonia.Simulation
         public int AttackPower { get; }
         public int Speed { get; }
 
-        public ActorType(string name, int maxHp, int attackPower, int speed)
+        public bool IsHostile { get; }
+
+        public ActorType(string name, int maxHp, int attackPower, int speed, bool bHostile = false)
         {
             if (string.IsNullOrEmpty(name))
             {
@@ -35,6 +37,7 @@ namespace Elonia.Simulation
             MaxHp = maxHp;
             AttackPower = attackPower;
             Speed = speed;
+            IsHostile = bHostile;
         }
     }
 }

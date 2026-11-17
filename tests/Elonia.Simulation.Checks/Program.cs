@@ -5,7 +5,7 @@ using Elonia.Simulation;
 
 namespace Elonia.Checks;
 
-public static class Program
+public static partial class Program
 {
     private const int MAP_WIDTH = 20;
     private const int MAP_HEIGHT = 12;
@@ -35,7 +35,11 @@ public static class Program
         Run(CheckDeadActorsTakeNoTurns);
         Run(CheckMonsterKillsPlayer);
         Run(CheckChaseBehavior);
+        Run(CheckPathFinder);
         Run(CheckItems);
+        Run(CheckInventory);
+        Run(CheckHarvest);
+        Run(CheckInteractions);
         Run(CheckTypeValidation);
         Run(CheckActionExecutedEvent);
         Run(CheckDebugInfo);
@@ -509,6 +513,75 @@ public static class Program
         GameRunner chaseRunner = new GameRunner(new World(chaseMap), chasePlayer);
         chaseRunner.SubmitPlayerAction(WaitAction.DEFAULT);
         CheckEqual("8,5", $"{chaser.X},{chaser.Y}", "A chaser steps around an actor that blocks the closest tile.");
+    }
+
+    private static void CheckPathFinder()
+    {
+        TileType wall = new TileType("Wall", false);
+        PathFinder pathFinder = new PathFinder();
+        List<(int X, int Y)> path = new List<(int X, int Y)>();
+
+        Map openMap = new Map(MAP_WIDTH, MAP_HEIGHT);
+        Check(pathFinder.TryFindPath(openMap, 2, 5, 6, 5, path), "A path is found on an open map.");
+        CheckEqual(4, path.Count, "The straight path is as long as the distance.");
+        CheckEqual((3, 5), path[0], "The path starts with the first step.");
+        CheckEqual((6, 5), path[path.Count - 1], "The path ends at the goal.");
+        Check(!pathFinder.TryFindPath(openMap, 2, 5, 2, 5, path) && path.Count == 0, "No path is needed to stand still.");
+        CheckThrows<ArgumentOutOfRangeException>(() => pathFinder.TryFindPath(openMap, 2, 5, MAP_WIDTH, 5, path),
+            "A goal outside the map is rejected.");
+
+        Map wallMap = new Map(MAP_WIDTH, MAP_HEIGHT);
+        for (int y = 3; y <= 7; y++)
+        {
+            wallMap.SetTile(4, y, wall);
+        }
+        Check(pathFinder.TryFindPath(wallMap, 2, 5, 6, 5, path), "A path is found around a wall.");
+        CheckEqual(10, path.Count, "The path around the wall is the shortest detour.");
+        Check(IsConnectedPath(wallMap, 2, 5, path), "Every step is one orthogonal move onto a walkable tile.");
+
+        Map actorMap = new Map(MAP_WIDTH, MAP_HEIGHT);
+        actorMap.AddActor(TestActors.Create(1, 4, 5, 10));
+        actorMap.AddActor(TestActors.Create(2, 8, 5, 10));
+        Check(pathFinder.TryFindPath(actorMap, 2, 5, 6, 5, path), "A path is found around an actor.");
+        CheckEqual(6, path.Count, "Stepping around an actor costs two extra steps.");
+        Check(!path.Contains((4, 5)), "The path does not pass through a living actor.");
+        Check(pathFinder.TryFindPath(actorMap, 5, 5, 8, 5, path), "A path is found to an actor's tile.");
+        CheckEqual((8, 5), path[path.Count - 1], "An actor on the goal tile is allowed as the last step.");
+
+        Map treeMap = new Map(MAP_WIDTH, MAP_HEIGHT);
+        treeMap.SetTile(10, 5, wall);
+        Check(pathFinder.TryFindPath(treeMap, 2, 5, 10, 5, path), "A path is found toward a blocked goal.");
+        CheckEqual((9, 5), path[path.Count - 1], "The path stops at the reachable tile closest to a blocked goal.");
+        CheckEqual(7, path.Count, "Among the closest tiles, the one with the shortest path is chosen.");
+        Check(!pathFinder.TryFindPath(treeMap, 9, 5, 10, 5, path) && path.Count == 0,
+            "No path is returned when the actor already stands on the closest tile.");
+
+        pathFinder.TryFindPath(wallMap, 0, 0, MAP_WIDTH - 1, MAP_HEIGHT - 1, path);
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int index = 0; index < 1000; index++)
+        {
+            pathFinder.TryFindPath(wallMap, 0, 0, MAP_WIDTH - 1, MAP_HEIGHT - 1, path);
+        }
+        CheckEqual(0L, GC.GetAllocatedBytesForCurrentThread() - before, "A warmed path finder does not allocate.");
+    }
+
+    private static bool IsConnectedPath(Map map, int fromX, int fromY, List<(int X, int Y)> path)
+    {
+        int x = fromX;
+        int y = fromY;
+        for (int index = 0; index < path.Count; index++)
+        {
+            (int nextX, int nextY) = path[index];
+            if (Math.Abs(nextX - x) + Math.Abs(nextY - y) != 1 || !map.CanEnter(nextX, nextY))
+            {
+                return false;
+            }
+
+            x = nextX;
+            y = nextY;
+        }
+
+        return true;
     }
 
     private static void CheckDeadActorsTakeNoTurns()

@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 using Raylib_cs;
 
 namespace Elonia.Playtest;
@@ -47,9 +48,17 @@ internal static class Program
                 {
                     game = new Game(atlas, font, CreateRandomSeed(), SCREEN_WIDTH, SCREEN_HEIGHT, game.IsDebuggerOpen);
                 }
-                else
+                else if (command != EPlayerCommand.None)
                 {
                     game.Execute(command);
+                }
+                else if ((demoOrNull == null || demoOrNull.IsFinished) && input.TryReadMapClick(out Vector2 clickPosition))
+                {
+                    game.ClickTile(clickPosition);
+                }
+                else if ((demoOrNull == null || demoOrNull.IsFinished) && input.TryReadMenuClick(out Vector2 menuPosition))
+                {
+                    game.OpenContextMenu(menuPosition);
                 }
 
                 game.Update(deltaTime);

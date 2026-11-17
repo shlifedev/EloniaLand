@@ -1,3 +1,5 @@
+using System.Numerics;
+using ImGuiNET;
 using Raylib_cs;
 
 namespace Elonia.Playtest;
@@ -28,6 +30,18 @@ internal sealed class PlayerInput
         }
 
         return ReadMove(deltaTime);
+    }
+
+    public bool TryReadMapClick(out Vector2 screenPosition)
+    {
+        screenPosition = Raylib.GetMousePosition();
+        return Raylib.IsMouseButtonPressed(MouseButton.Left) && !ImGui.GetIO().WantCaptureMouse;
+    }
+
+    public bool TryReadMenuClick(out Vector2 screenPosition)
+    {
+        screenPosition = Raylib.GetMousePosition();
+        return Raylib.IsMouseButtonPressed(MouseButton.Right) && !ImGui.GetIO().WantCaptureMouse;
     }
 
     private EPlayerCommand ReadMove(float deltaTime)

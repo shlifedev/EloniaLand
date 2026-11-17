@@ -4,6 +4,8 @@ namespace Elonia.Simulation
 {
     public sealed class AttackAction : ActorAction
     {
+        public const int REACH = 1;
+
         public override string Name => "ATTACK";
         public Actor Target { get; }
 
@@ -19,7 +21,7 @@ namespace Elonia.Simulation
 
         public static bool IsInReach(Actor attacker, Actor target)
         {
-            return Math.Abs(attacker.X - target.X) + Math.Abs(attacker.Y - target.Y) == 1;
+            return Math.Abs(attacker.X - target.X) + Math.Abs(attacker.Y - target.Y) == REACH;
         }
 
         public override ActionResult Execute(ActionContext context)

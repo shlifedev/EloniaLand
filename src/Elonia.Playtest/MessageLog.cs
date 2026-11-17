@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
+using Cysharp.Text;
 using Elonia.Events;
 using Elonia.Simulation;
 using Raylib_cs;
 
 namespace Elonia.Playtest;
 
-internal sealed class MessageLog : IEventListener<ActorAttacked>, IEventListener<ActorDied>, IEventListener<ItemPickedUp>
+internal sealed class MessageLog : IEventListener<ActorAttacked>, IEventListener<ActorDied>, IEventListener<ItemPickedUp>, IEventListener<TileHarvested>
 {
     public static readonly Color NORMAL = new Color(240, 236, 220, 255);
     public static readonly Color DANGER = new Color(255, 120, 110, 255);
@@ -49,11 +50,11 @@ internal sealed class MessageLog : IEventListener<ActorAttacked>, IEventListener
     {
         if (message.Attacker == _player)
         {
-            Add($"You hit the {message.Target.Type.Name} for {message.Damage}.", NORMAL);
+            Add(ZString.Concat(GameText.GetActorTypeName(message.Target.Type), "에게 ", message.Damage, "의 피해를 주었다."), NORMAL);
         }
         else if (message.Target == _player)
         {
-            Add($"The {message.Attacker.Type.Name} hits you for {message.Damage}.", DANGER);
+            Add(ZString.Concat(GameText.GetActorTypeName(message.Attacker.Type), "의 공격! ", message.Damage, "의 피해를 입었다."), DANGER);
         }
     }
 
@@ -61,11 +62,11 @@ internal sealed class MessageLog : IEventListener<ActorAttacked>, IEventListener
     {
         if (message.Actor == _player)
         {
-            Add("You collapse...", DANGER);
+            Add("당신은 쓰러졌다...", DANGER);
         }
         else
         {
-            Add($"The {message.Actor.Type.Name} is defeated.", GOOD);
+            Add(ZString.Concat(GameText.WithObjectParticle(GameText.GetActorTypeName(message.Actor.Type)), " 쓰러뜨렸다."), GOOD);
         }
     }
 
@@ -76,14 +77,29 @@ internal sealed class MessageLog : IEventListener<ActorAttacked>, IEventListener
             return;
         }
 
-        if (message.Item.Type == EItemType.Potion)
+        switch (message.Item.Type)
         {
-            Add($"You drink a potion. (+{message.Item.Amount} HP)", GOOD);
+            case EItemType.Potion:
+                Add(ZString.Concat("물약을 마셨다. (체력 +", message.Item.Amount, ")"), GOOD);
+                break;
+            case EItemType.Gold:
+                Add(ZString.Concat(message.Item.Amount, " 골드를 주웠다."), GOLD);
+                break;
+            default:
+                Add(ZString.Concat(GameText.WithObjectParticle(GameText.GetItemName(message.Item.Type)), " 주웠다. (x", message.Item.Amount, ")"), NORMAL);
+                break;
         }
-        else
+    }
+
+    public void OnEvent(TileHarvested message)
+    {
+        if (message.Actor != _player)
         {
-            Add($"You pick up {message.Item.Amount} gold.", GOLD);
+            return;
         }
+
+        Add(ZString.Concat(GameText.WithObjectParticle(GameText.GetTileName(message.HarvestedTile)), " 베었다. ",
+            GameText.WithSubjectParticle(GameText.GetItemName(message.DroppedItem.Type)), " 떨어졌다."), NORMAL);
     }
 
     public void Update(float deltaTime)

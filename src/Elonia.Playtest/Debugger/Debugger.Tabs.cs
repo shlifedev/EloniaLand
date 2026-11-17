@@ -139,7 +139,7 @@ internal sealed partial class Debugger
             DrawBarRow("체력", (float)actor.Hp / actor.Type.MaxHp, ZString.Concat(actor.Hp, " / ", actor.Type.MaxHp));
             DrawBarRow("에너지", Math.Min(1.0f, (float)actor.Energy / GameRunner.READY_ENERGY),
                 ZString.Concat(actor.Energy, " / ", GameRunner.READY_ENERGY));
-            DrawRow("속도", ZString.Format("{0} (틱당 에너지)", actor.Type.Speed));
+            DrawRow("속도", ZString.Format("{0} (틱당 에너지, 보통 100)", actor.Type.Speed));
             DrawRow("공격력", ZString.Concat(actor.Type.AttackPower));
             DrawRow("행동 횟수", ZString.Concat(actor.ActionCount));
             DrawRow("골드", ZString.Concat(actor.Gold));

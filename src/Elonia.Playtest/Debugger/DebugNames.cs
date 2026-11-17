@@ -12,32 +12,7 @@ internal static class DebugNames
 
     public static string GetActorTypeName(ActorType type)
     {
-        if (type == GameContent.HERO)
-        {
-            return "영웅";
-        }
-
-        if (type == GameContent.VILLAGER)
-        {
-            return "마을 사람";
-        }
-
-        if (type == GameContent.RAT)
-        {
-            return "쥐";
-        }
-
-        if (type == GameContent.SLIME)
-        {
-            return "슬라임";
-        }
-
-        if (type == GameContent.BAT)
-        {
-            return "박쥐";
-        }
-
-        return type.Name;
+        return GameText.GetActorTypeName(type);
     }
 
     public static string GetBehaviorName(IBehavior behavior)
@@ -69,6 +44,8 @@ internal static class DebugNames
                 return "대기";
             case PickUpAction _:
                 return "줍기";
+            case HarvestAction harvest:
+                return ZString.Concat("캐기: (", harvest.TargetX, ", ", harvest.TargetY, ")");
             default:
                 return action.Name;
         }
@@ -76,70 +53,12 @@ internal static class DebugNames
 
     public static string GetTileName(TileType type)
     {
-        if (type == GameContent.GRASS)
-        {
-            return "잔디";
-        }
-
-        if (type == GameContent.PATH)
-        {
-            return "돌길";
-        }
-
-        if (type == GameContent.DIRT)
-        {
-            return "흙";
-        }
-
-        if (type == GameContent.GATE)
-        {
-            return "울타리 문";
-        }
-
-        if (type == GameContent.TREE)
-        {
-            return "나무";
-        }
-
-        if (type == GameContent.BUSH)
-        {
-            return "덤불";
-        }
-
-        if (type == GameContent.FENCE)
-        {
-            return "울타리";
-        }
-
-        if (type == GameContent.BUILDING)
-        {
-            return "건물";
-        }
-
-        if (type == GameContent.WELL)
-        {
-            return "우물";
-        }
-
-        if (type == GameContent.SIGN)
-        {
-            return "표지판";
-        }
-
-        return type.Name;
+        return GameText.GetTileName(type);
     }
 
     public static string GetItemName(Item item)
     {
-        switch (item.Type)
-        {
-            case EItemType.Potion:
-                return "물약";
-            case EItemType.Gold:
-                return "골드";
-            default:
-                return item.Type.ToString();
-        }
+        return GameText.GetItemName(item.Type);
     }
 
     private static string GetDirectionName(int deltaX, int deltaY)
