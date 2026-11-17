@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>elonia-data</AssemblyName>
+    <RootNamespace>Elonia.DataManager.Cli</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Elonia.DataManager/Elonia.DataManager.csproj" />
+  </ItemGroup>
+</Project>

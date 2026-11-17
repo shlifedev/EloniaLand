@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Elonia.Checks</RootNamespace>
+    <DefineConstants Condition="Exists('Fixture/Generated/FixtureTables.g.cs')">$(DefineConstants);HAS_FIXTURE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Elonia.DataManager/Elonia.DataManager.csproj" />
+    <ProjectReference Include="../../src/Elonia.DataManager.Runtime/Elonia.DataManager.Runtime.csproj" />
+    <ProjectReference Include="../../src/Elonia.Data/Elonia.Data.csproj" />
+    <PackageReference Include="MemoryPack" Version="1.22.0" />
+  </ItemGroup>
+</Project>
