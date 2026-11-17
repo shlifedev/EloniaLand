@@ -1,0 +1,14 @@
+tiny-town.png    - "Tiny Town" (1.0) tilemap_packed.png
+tiny-dungeon.png - "Tiny Dungeon" (1.0) tilemap_packed.png
+kenney-mini.ttf  - "Kenney Fonts" Kenney Mini.ttf
+
+Created/distributed by Kenney (www.kenney.nl)
+https://kenney.nl/assets/tiny-town
+https://kenney.nl/assets/tiny-dungeon
+https://kenney.nl/assets/kenney-fonts
+
+License: Creative Commons Zero (CC0)
+http://creativecommons.org/publicdomain/zero/1.0/
+
+This content is free to use in personal, educational and commercial projects.
+Crediting Kenney is appreciated but not mandatory.
