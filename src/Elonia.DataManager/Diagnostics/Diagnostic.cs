@@ -16,16 +16,19 @@ namespace Elonia.DataManager
 
         public string Location { get; }
 
+        public CellOrigin? OriginOrNull { get; }
+
         public string? ValueOrNull { get; }
 
         public string Reason { get; }
 
         public string? FixOrNull { get; }
 
-        public Diagnostic(ESeverity severity, string location, string? valueOrNull, string reason, string? fixOrNull)
+        public Diagnostic(ESeverity severity, string location, CellOrigin? originOrNull, string? valueOrNull, string reason, string? fixOrNull)
         {
             Severity = severity;
             Location = location;
+            OriginOrNull = originOrNull;
             ValueOrNull = valueOrNull;
             Reason = reason;
             FixOrNull = fixOrNull;
@@ -43,22 +46,22 @@ namespace Elonia.DataManager
 
         public void AddError(Cell cell, string reason, string? fixOrNull = null)
         {
-            Add(new Diagnostic(ESeverity.Error, cell.Origin.ToString(), cell.Text, reason, fixOrNull));
+            Add(new Diagnostic(ESeverity.Error, cell.Origin.ToString(), cell.Origin, cell.Text, reason, fixOrNull));
         }
 
         public void AddError(string location, string reason, string? fixOrNull = null)
         {
-            Add(new Diagnostic(ESeverity.Error, location, null, reason, fixOrNull));
+            Add(new Diagnostic(ESeverity.Error, location, null, null, reason, fixOrNull));
         }
 
         public void AddWarning(Cell cell, string reason, string? fixOrNull = null)
         {
-            Add(new Diagnostic(ESeverity.Warning, cell.Origin.ToString(), cell.Text, reason, fixOrNull));
+            Add(new Diagnostic(ESeverity.Warning, cell.Origin.ToString(), cell.Origin, cell.Text, reason, fixOrNull));
         }
 
         public void AddWarning(string location, string reason, string? fixOrNull = null)
         {
-            Add(new Diagnostic(ESeverity.Warning, location, null, reason, fixOrNull));
+            Add(new Diagnostic(ESeverity.Warning, location, null, null, reason, fixOrNull));
         }
 
         private void Add(Diagnostic diagnostic)
