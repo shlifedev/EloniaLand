@@ -4,6 +4,8 @@ namespace Elonia.Simulation
     {
         public static readonly PickUpAction DEFAULT = new PickUpAction();
 
+        public const int REACH = 0;
+
         public override string Name => "PICK UP";
 
         public override ActionResult Execute(ActionContext context)
@@ -24,7 +26,8 @@ namespace Elonia.Simulation
                     actor.AddGold(itemOrNull.Amount);
                     break;
                 default:
-                    return ActionResult.REJECTED;
+                    actor.Inventory.Add(itemOrNull.Type, itemOrNull.Amount);
+                    break;
             }
 
             context.Map.RemoveItem(itemOrNull);

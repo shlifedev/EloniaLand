@@ -18,6 +18,8 @@ namespace Elonia.Simulation
 
         public IActorController? ControllerOrNull { get; }
 
+        public Inventory Inventory { get; } = new Inventory();
+
         public Actor(int id, ActorType type, int x, int y, IActorController? controllerOrNull = null)
         {
             if (type == null)
@@ -31,6 +33,14 @@ namespace Elonia.Simulation
             Y = y;
             Hp = type.MaxHp;
             ControllerOrNull = controllerOrNull;
+        }
+
+        internal void AddInteractions(InteractionPlan plan, Actor by)
+        {
+            if (this != by && IsAlive && Type.IsHostile)
+            {
+                plan.Add(new AttackAction(this), this, AttackAction.REACH);
+            }
         }
 
         internal void MoveTo(int x, int y)

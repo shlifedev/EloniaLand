@@ -1,13 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Cysharp.Text;
 using Elonia.Events;
 using Elonia.Simulation;
 using Raylib_cs;
 
 namespace Elonia.Playtest;
 
-internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<ActorDied>, IEventListener<ItemPickedUp>
+internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<ActorDied>, IEventListener<ItemPickedUp>, IEventListener<TileHarvested>
 {
     public const int TILE_SIZE = SpriteAtlas.SOURCE_TILE_SIZE * 3;
 
@@ -29,6 +30,8 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
     private static readonly Color HP_BAR_FILL = new Color(232, 72, 72, 255);
     private static readonly Color ALERT_HOSTILE = new Color(255, 96, 96, 255);
     private static readonly Color ALERT_SCARED = new Color(255, 224, 96, 255);
+    private static readonly Color TRAVEL_MARK = new Color(255, 255, 255, 150);
+    private static readonly Color MARKED_TILE = new Color(255, 224, 96, 220);
 
     private readonly SpriteAtlas _atlas;
     private readonly UiFont _font;
@@ -47,6 +50,10 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
     private int _drawnCameraY;
     private float _time;
 
+    public IReadOnlyList<(int X, int Y)>? TravelPathOrNull { get; set; }
+
+    public (int X, int Y)? MarkedTileOrNull { get; set; }
+
     public GameView(SpriteAtlas atlas, UiFont font, GameSession session, int screenWidth, int screenHeight)
     {
         _atlas = atlas;
@@ -62,7 +69,7 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
             _actorViews.Add(actor, new ActorView(actor));
         }
 
-        session.World.Events.Register<ActorAttacked, ActorDied, ItemPickedUp>(this);
+        session.World.Events.Register<ActorAttacked, ActorDied, ItemPickedUp, TileHarvested>(this);
         GetCameraTarget(out _cameraX, out _cameraY);
     }
 
@@ -93,14 +100,31 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
 
     public void OnEvent(ItemPickedUp message)
     {
-        if (message.Item.Type == EItemType.Potion)
+        switch (message.Item.Type)
         {
-            AddFloatingText($"+{message.Item.Amount} HP", message.Actor, MessageLog.GOOD);
+            case EItemType.Potion:
+                AddFloatingText(ZString.Concat("체력 +", message.Item.Amount), message.Actor, MessageLog.GOOD);
+                break;
+            case EItemType.Gold:
+                AddFloatingText(ZString.Concat("+", message.Item.Amount, " 골드"), message.Actor, MessageLog.GOLD);
+                break;
+            default:
+                AddFloatingText(ZString.Concat("+", message.Item.Amount, " ", GameText.GetItemName(message.Item.Type)), message.Actor, MessageLog.NORMAL);
+                break;
         }
-        else
+    }
+
+    public void OnEvent(TileHarvested message)
+    {
+        ActorView view = _actorViews[message.Actor];
+        int directionX = message.X - message.Actor.X;
+        int directionY = message.Y - message.Actor.Y;
+        if (directionX != 0)
         {
-            AddFloatingText($"+{message.Item.Amount} G", message.Actor, MessageLog.GOLD);
+            view.IsFacingLeft = directionX < 0;
         }
+
+        StartLunge(view, directionX, directionY, 0.35f);
     }
 
     public void ShowBump(Actor actor, int directionX, int directionY)
@@ -198,6 +222,8 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
             }
         }
 
+        DrawTravelPath(cameraX, cameraY);
+        DrawMarkedTile(cameraX, cameraY);
         DrawItems(map, cameraX, cameraY);
         DrawActors(map, cameraX, cameraY);
 
@@ -268,6 +294,37 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
         }
     }
 
+    private void DrawTravelPath(int cameraX, int cameraY)
+    {
+        IReadOnlyList<(int X, int Y)>? pathOrNull = TravelPathOrNull;
+        if (pathOrNull == null || pathOrNull.Count == 0)
+        {
+            return;
+        }
+
+        for (int index = 0; index < pathOrNull.Count - 1; index++)
+        {
+            (int x, int y) = pathOrNull[index];
+            Raylib.DrawCircle(x * TILE_SIZE - cameraX + TILE_SIZE / 2, y * TILE_SIZE - cameraY + TILE_SIZE / 2, 3.0f, TRAVEL_MARK);
+        }
+
+        (int goalX, int goalY) = pathOrNull[pathOrNull.Count - 1];
+        Rectangle goal = new Rectangle(goalX * TILE_SIZE - cameraX + 4, goalY * TILE_SIZE - cameraY + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+        Raylib.DrawRectangleRoundedLinesEx(goal, 0.25f, 4, 2.0f, TRAVEL_MARK);
+    }
+
+    private void DrawMarkedTile(int cameraX, int cameraY)
+    {
+        if (MarkedTileOrNull == null)
+        {
+            return;
+        }
+
+        (int x, int y) = MarkedTileOrNull.Value;
+        Rectangle tile = new Rectangle(x * TILE_SIZE - cameraX + 2, y * TILE_SIZE - cameraY + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+        Raylib.DrawRectangleRoundedLinesEx(tile, 0.25f, 4, 3.0f, MARKED_TILE);
+    }
+
     private void DrawItems(Map map, int cameraX, int cameraY)
     {
         for (int index = 0; index < map.Items.Count; index++)
@@ -278,7 +335,7 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
             int screenX = item.X * TILE_SIZE - cameraX;
             int screenY = item.Y * TILE_SIZE - cameraY;
             Raylib.DrawEllipse(screenX + TILE_SIZE / 2, screenY + TILE_SIZE - 6, 11.0f, 4.0f, SHADOW);
-            _atlas.Draw(Art.GetItemSprite(item), screenX, screenY - 4 + (int)MathF.Round(bob), TILE_SIZE, WHITE);
+            _atlas.Draw(Art.GetItemSprite(item.Type), screenX, screenY - 4 + (int)MathF.Round(bob), TILE_SIZE, WHITE);
         }
     }
 

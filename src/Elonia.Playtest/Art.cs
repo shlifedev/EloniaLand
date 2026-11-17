@@ -6,6 +6,7 @@ internal static class Art
 {
     public static readonly Sprite POTION = Sprite.Dungeon(115);
     public static readonly Sprite GOLD = Sprite.Town(93);
+    public static readonly Sprite BRANCH = Sprite.Town(106);
 
     private static readonly Sprite GRASS_PLAIN = Sprite.Town(0);
     private static readonly Sprite GRASS_TUFTS = Sprite.Town(1);
@@ -150,9 +151,17 @@ internal static class Art
         return VILLAGERS[actor.ID % VILLAGERS.Length];
     }
 
-    public static Sprite GetItemSprite(Item item)
+    public static Sprite GetItemSprite(EItemType type)
     {
-        return item.Type == EItemType.Potion ? POTION : GOLD;
+        switch (type)
+        {
+            case EItemType.Potion:
+                return POTION;
+            case EItemType.Branch:
+                return BRANCH;
+            default:
+                return GOLD;
+        }
     }
 
     public static Sprite GetWoodHouseSprite(int column, int row, int width)

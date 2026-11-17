@@ -4,6 +4,8 @@ namespace Elonia.Simulation
     {
         Potion,
 
-        Gold
+        Gold,
+
+        Branch
     }
 }

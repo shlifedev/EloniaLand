@@ -21,5 +21,10 @@ namespace Elonia.Simulation
             Y = y;
             Amount = amount;
         }
+
+        internal void AddInteractions(InteractionPlan plan)
+        {
+            plan.Add(PickUpAction.DEFAULT, X, Y, PickUpAction.REACH);
+        }
     }
 }
