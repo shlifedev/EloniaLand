@@ -8,7 +8,7 @@ using Raylib_cs;
 
 namespace Elonia.Playtest;
 
-internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<ActorDied>, IEventListener<ItemPickedUp>, IEventListener<TileHarvested>
+internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<ActorDied>, IEventListener<ItemPickedUp>, IEventListener<PropHarvested>, IEventListener<ActorDamaged>
 {
     public const int TILE_SIZE = SpriteAtlas.SOURCE_TILE_SIZE * 3;
 
@@ -33,13 +33,26 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
     private static readonly Color TRAVEL_MARK = new Color(255, 255, 255, 150);
     private static readonly Color MARKED_TILE = new Color(255, 224, 96, 220);
 
+    private static readonly Color WALL_TOP = new Color(150, 160, 186, 255);
+    private static readonly Color WALL_FRONT = new Color(92, 86, 116, 255);
+    private static readonly Color WALL_MORTAR = new Color(68, 62, 92, 255);
+    private static readonly Color WALL_OUTLINE = new Color(24, 20, 37, 255);
+    private static readonly Color DOOR_PANEL = new Color(150, 96, 56, 255);
+    private const int WALL_OUTLINE_WIDTH = 3;
+
+    private const int WALL_TOP_HEIGHT = TILE_SIZE;
+
+    private const float WALL_SEE_THROUGH_ALPHA = 0.45f;
+
+    private static readonly Comparison<WorldDrawItem> COMPARE_BY_FOOT_Y = CompareByFootY;
+
     private readonly SpriteAtlas _atlas;
     private readonly UiFont _font;
     private readonly GameSession _session;
     private readonly int _screenWidth;
     private readonly int _screenHeight;
     private readonly Dictionary<Actor, ActorView> _actorViews = new Dictionary<Actor, ActorView>();
-    private readonly List<Actor> _drawOrder = new List<Actor>();
+    private readonly List<WorldDrawItem> _drawItems = new List<WorldDrawItem>();
     private readonly List<FloatingText> _floatingTexts = new List<FloatingText>();
 
     private float _cameraX;
@@ -69,7 +82,7 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
             _actorViews.Add(actor, new ActorView(actor));
         }
 
-        session.World.Events.Register<ActorAttacked, ActorDied, ItemPickedUp, TileHarvested>(this);
+        session.World.Events.Register<ActorAttacked, ActorDied, ItemPickedUp, PropHarvested, ActorDamaged>(this);
         GetCameraTarget(out _cameraX, out _cameraY);
     }
 
@@ -94,27 +107,38 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
         }
     }
 
+    public void OnEvent(ActorDamaged message)
+    {
+        ActorView target = _actorViews[message.Actor];
+        target.FlashTime = FLASH_SECONDS;
+        AddFloatingText(ZString.Concat("-", message.Damage), message.Actor, HIT_TINT);
+        if (message.Actor == _session.Player)
+        {
+            _shakeTime = SHAKE_SECONDS;
+        }
+    }
+
     public void OnEvent(ActorDied message)
     {
     }
 
     public void OnEvent(ItemPickedUp message)
     {
-        switch (message.Item.Type)
+        switch (message.Effect)
         {
-            case EItemType.Potion:
-                AddFloatingText(ZString.Concat("체력 +", message.Item.Amount), message.Actor, MessageLog.GOOD);
+            case EItemEffect.Heal:
+                AddFloatingText(ZString.Concat("체력 +", message.Amount), message.Actor, MessageLog.GOOD);
                 break;
-            case EItemType.Gold:
-                AddFloatingText(ZString.Concat("+", message.Item.Amount, " 골드"), message.Actor, MessageLog.GOLD);
+            case EItemEffect.Gold:
+                AddFloatingText(ZString.Concat("+", message.Amount, " 골드"), message.Actor, MessageLog.GOLD);
                 break;
             default:
-                AddFloatingText(ZString.Concat("+", message.Item.Amount, " ", GameText.GetItemName(message.Item.Type)), message.Actor, MessageLog.NORMAL);
+                AddFloatingText(ZString.Concat("+", message.Amount, " ", GameText.GetThingName(message.Thing.Type)), message.Actor, MessageLog.NORMAL);
                 break;
         }
     }
 
-    public void OnEvent(TileHarvested message)
+    public void OnEvent(PropHarvested message)
     {
         ActorView view = _actorViews[message.Actor];
         int directionX = message.X - message.Actor.X;
@@ -210,34 +234,15 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
             }
         }
 
-        for (int y = firstY; y <= lastY; y++)
+        CollectDrawItems(map, firstX, firstY, lastX, lastY);
+        _drawItems.Sort(COMPARE_BY_FOOT_Y);
+        for (int index = 0; index < _drawItems.Count; index++)
         {
-            for (int x = firstX; x <= lastX; x++)
-            {
-                Sprite? spriteOrNull = Art.GetObjectOrNull(_session, x, y);
-                if (spriteOrNull != null)
-                {
-                    _atlas.Draw(spriteOrNull.Value, x * TILE_SIZE - cameraX, y * TILE_SIZE - cameraY, TILE_SIZE, WHITE);
-                }
-            }
+            DrawItem(map, _drawItems[index], cameraX, cameraY);
         }
 
         DrawTravelPath(cameraX, cameraY);
         DrawMarkedTile(cameraX, cameraY);
-        DrawItems(map, cameraX, cameraY);
-        DrawActors(map, cameraX, cameraY);
-
-        for (int y = firstY; y <= lastY; y++)
-        {
-            for (int x = firstX; x <= lastX; x++)
-            {
-                Sprite? topOrNull = Art.GetTreeTopOrNull(map, x, y);
-                if (topOrNull != null)
-                {
-                    _atlas.Draw(topOrNull.Value, x * TILE_SIZE - cameraX, (y - 1) * TILE_SIZE - cameraY, TILE_SIZE, WHITE);
-                }
-            }
-        }
 
         DrawHpBars(map, cameraX, cameraY);
         DrawFloatingTexts(cameraX, cameraY);
@@ -325,46 +330,168 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
         Raylib.DrawRectangleRoundedLinesEx(tile, 0.25f, 4, 3.0f, MARKED_TILE);
     }
 
-    private void DrawItems(Map map, int cameraX, int cameraY)
+    private void CollectDrawItems(Map map, int firstX, int firstY, int lastX, int lastY)
     {
-        for (int index = 0; index < map.Items.Count; index++)
+        _drawItems.Clear();
+        for (int y = firstY; y <= lastY; y++)
         {
-            Item item = map.Items[index];
-
-            float bob = MathF.Sin(_time * 3.0f + item.X) * 3.0f;
-            int screenX = item.X * TILE_SIZE - cameraX;
-            int screenY = item.Y * TILE_SIZE - cameraY;
-            Raylib.DrawEllipse(screenX + TILE_SIZE / 2, screenY + TILE_SIZE - 6, 11.0f, 4.0f, SHADOW);
-            _atlas.Draw(Art.GetItemSprite(item.Type), screenX, screenY - 4 + (int)MathF.Round(bob), TILE_SIZE, WHITE);
-        }
-    }
-
-    private void DrawActors(Map map, int cameraX, int cameraY)
-    {
-        _drawOrder.Clear();
-        for (int index = 0; index < map.Actors.Count; index++)
-        {
-            Actor actor = map.Actors[index];
-            if (_actorViews[actor].DeadTime < FADE_OUT_SECONDS)
+            for (int x = firstX; x <= lastX; x++)
             {
-                _drawOrder.Add(actor);
+                if (map.GetPropOrNull(x, y) != null)
+                {
+                    _drawItems.Add(new WorldDrawItem(y + 1, EWorldDrawKind.Prop, x, y, -1));
+                }
             }
         }
 
-        _drawOrder.Sort(CompareByScreenY);
-
-        for (int index = 0; index < _drawOrder.Count; index++)
+        for (int index = 0; index < map.Things.Count; index++)
         {
-            Actor actor = _drawOrder[index];
-            ActorView view = _actorViews[actor];
-            GetActorScreenPosition(actor, view, cameraX, cameraY, out int screenX, out int screenY, out int hop);
-
-            float alpha = 1.0f - view.DeadTime / FADE_OUT_SECONDS;
-            Raylib.DrawEllipse(screenX + TILE_SIZE / 2, screenY + TILE_SIZE - 5, 14.0f, 5.0f, Raylib.Fade(SHADOW, alpha * SHADOW.A / 255.0f));
-
-            Color tint = view.FlashTime > 0.0f ? HIT_TINT : WHITE;
-            _atlas.Draw(Art.GetActorSprite(actor), screenX, screenY - 4 - hop, TILE_SIZE, Raylib.Fade(tint, alpha), view.IsFacingLeft);
+            Thing thing = map.Things[index];
+            _drawItems.Add(new WorldDrawItem(thing.Y + 1, EWorldDrawKind.Thing, thing.X, thing.Y, index));
         }
+
+        for (int index = 0; index < map.Actors.Count; index++)
+        {
+            Actor actor = map.Actors[index];
+            ActorView view = _actorViews[actor];
+            if (view.DeadTime < FADE_OUT_SECONDS)
+            {
+                _drawItems.Add(new WorldDrawItem(view.Y + 1.0f, EWorldDrawKind.Actor, actor.X, actor.Y, index));
+            }
+        }
+    }
+
+    private void DrawItem(Map map, WorldDrawItem item, int cameraX, int cameraY)
+    {
+        switch (item.Kind)
+        {
+            case EWorldDrawKind.Prop:
+                DrawProp(map, item.X, item.Y, cameraX, cameraY);
+                break;
+            case EWorldDrawKind.Thing:
+                DrawThing(map.Things[item.Index], cameraX, cameraY);
+                break;
+            default:
+                DrawActor(map.Actors[item.Index], cameraX, cameraY);
+                break;
+        }
+    }
+
+    private void DrawProp(Map map, int x, int y, int cameraX, int cameraY)
+    {
+        int screenX = x * TILE_SIZE - cameraX;
+        int screenY = y * TILE_SIZE - cameraY;
+        PropType? propOrNull = map.GetPropOrNull(x, y);
+        if (propOrNull != null && _session.BuildingSprites.TryGetValue((x, y, propOrNull), out Sprite house))
+        {
+            _atlas.Draw(house, screenX, screenY, TILE_SIZE, WHITE);
+            return;
+        }
+
+        WallPiece? wallOrNull = Art.GetWallPieceOrNull(map, x, y);
+        if (wallOrNull != null)
+        {
+            DrawWall(wallOrNull.Value, x, y, screenX, screenY);
+            return;
+        }
+
+        Sprite? spriteOrNull = Art.GetPropSpriteOrNull(map, x, y);
+        if (spriteOrNull != null)
+        {
+            _atlas.Draw(spriteOrNull.Value, screenX, screenY, TILE_SIZE, WHITE);
+        }
+
+        Sprite? topOrNull = Art.GetTreeTopOrNull(map, x, y);
+        if (topOrNull != null)
+        {
+            _atlas.Draw(topOrNull.Value, screenX, screenY - TILE_SIZE, TILE_SIZE, WHITE);
+        }
+    }
+
+    private void DrawWall(WallPiece piece, int x, int y, int screenX, int screenY)
+    {
+        float alpha = IsPlayerBehindWall(x, y) ? WALL_SEE_THROUGH_ALPHA : 1.0f;
+        Color top = Raylib.Fade(WALL_TOP, alpha);
+        Color front = Raylib.Fade(WALL_FRONT, alpha);
+        Color mortar = Raylib.Fade(WALL_MORTAR, alpha);
+        Color outline = Raylib.Fade(WALL_OUTLINE, alpha);
+
+        int topY = screenY - WALL_TOP_HEIGHT;
+        int height = WALL_TOP_HEIGHT + TILE_SIZE;
+        Raylib.DrawRectangle(screenX, topY, TILE_SIZE, piece.HasFrontFace ? WALL_TOP_HEIGHT : height, top);
+
+        if (piece.HasFrontFace)
+        {
+            Raylib.DrawRectangle(screenX, screenY, TILE_SIZE, TILE_SIZE, front);
+
+            int brickHeight = TILE_SIZE / 3;
+            for (int row = 0; row < 3; row++)
+            {
+                int rowY = screenY + row * brickHeight;
+                if (row > 0)
+                {
+                    Raylib.DrawRectangle(screenX, rowY, TILE_SIZE, 2, mortar);
+                }
+
+                int jointX = screenX + (row % 2 == 0 ? TILE_SIZE / 3 : TILE_SIZE * 2 / 3);
+                Raylib.DrawRectangle(jointX, rowY, 2, brickHeight, mortar);
+            }
+
+            Raylib.DrawRectangle(screenX, screenY, TILE_SIZE, WALL_OUTLINE_WIDTH, outline);
+            Raylib.DrawRectangle(screenX, screenY + TILE_SIZE - WALL_OUTLINE_WIDTH, TILE_SIZE, WALL_OUTLINE_WIDTH, outline);
+        }
+
+        if (piece.IsDoor)
+        {
+            int doorWidth = TILE_SIZE / 2;
+            int doorTop = screenY + TILE_SIZE / 6;
+            Rectangle door = new Rectangle(screenX + (TILE_SIZE - doorWidth) / 2, doorTop, doorWidth, screenY + TILE_SIZE - doorTop);
+            Raylib.DrawRectangleRec(door, Raylib.Fade(DOOR_PANEL, alpha));
+            Raylib.DrawRectangleLinesEx(door, 2.0f, outline);
+        }
+
+        if (!piece.IsNorthConnected)
+        {
+            Raylib.DrawRectangle(screenX, topY, TILE_SIZE, WALL_OUTLINE_WIDTH, outline);
+        }
+
+        if (!piece.IsWestConnected)
+        {
+            Raylib.DrawRectangle(screenX, topY, WALL_OUTLINE_WIDTH, height, outline);
+        }
+
+        if (!piece.IsEastConnected)
+        {
+            Raylib.DrawRectangle(screenX + TILE_SIZE - WALL_OUTLINE_WIDTH, topY, WALL_OUTLINE_WIDTH, height, outline);
+        }
+    }
+
+    private bool IsPlayerBehindWall(int x, int y)
+    {
+        ActorView player = _actorViews[_session.Player];
+        float topHeightInTiles = WALL_TOP_HEIGHT / (float)TILE_SIZE;
+        return MathF.Abs(player.X - x) < 1.5f && player.Y > y - 1.0f - topHeightInTiles && player.Y < y;
+    }
+
+    private void DrawThing(Thing thing, int cameraX, int cameraY)
+    {
+        float bob = MathF.Sin(_time * 3.0f + thing.X) * 3.0f;
+        int screenX = thing.X * TILE_SIZE - cameraX;
+        int screenY = thing.Y * TILE_SIZE - cameraY;
+        Raylib.DrawEllipse(screenX + TILE_SIZE / 2, screenY + TILE_SIZE - 6, 11.0f, 4.0f, SHADOW);
+        _atlas.Draw(Art.GetThingSprite(thing.Type), screenX, screenY - 4 + (int)MathF.Round(bob), TILE_SIZE, WHITE);
+    }
+
+    private void DrawActor(Actor actor, int cameraX, int cameraY)
+    {
+        ActorView view = _actorViews[actor];
+        GetActorScreenPosition(actor, view, cameraX, cameraY, out int screenX, out int screenY, out int hop);
+
+        float alpha = 1.0f - view.DeadTime / FADE_OUT_SECONDS;
+        Raylib.DrawEllipse(screenX + TILE_SIZE / 2, screenY + TILE_SIZE - 5, 14.0f, 5.0f, Raylib.Fade(SHADOW, alpha * SHADOW.A / 255.0f));
+
+        Color tint = view.FlashTime > 0.0f ? HIT_TINT : WHITE;
+        _atlas.Draw(Art.GetActorSprite(actor), screenX, screenY - 4 - hop, TILE_SIZE, Raylib.Fade(tint, alpha), view.IsFacingLeft);
     }
 
     private void DrawHpBars(Map map, int cameraX, int cameraY)
@@ -448,9 +575,16 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
         _floatingTexts.Add(new FloatingText(text, _actorViews[actor], color));
     }
 
-    private int CompareByScreenY(Actor left, Actor right)
+    private static int CompareByFootY(WorldDrawItem left, WorldDrawItem right)
     {
-        return _actorViews[left].Y.CompareTo(_actorViews[right].Y);
+        int result = left.FootY.CompareTo(right.FootY);
+        if (result != 0)
+        {
+            return result;
+        }
+
+        result = ((int)left.Kind).CompareTo((int)right.Kind);
+        return result != 0 ? result : left.X.CompareTo(right.X);
     }
 
     private static void StartLunge(ActorView view, float directionX, float directionY, float distance)
@@ -464,6 +598,31 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
     private static bool IsAlert(IBehavior? behaviorOrNull)
     {
         return behaviorOrNull is ChaseBehavior || behaviorOrNull is AttackBehavior || behaviorOrNull is FleeBehavior;
+    }
+
+    private enum EWorldDrawKind
+    {
+        Prop,
+        Thing,
+        Actor
+    }
+
+    private readonly struct WorldDrawItem
+    {
+        public float FootY { get; }
+        public EWorldDrawKind Kind { get; }
+        public int X { get; }
+        public int Y { get; }
+        public int Index { get; }
+
+        public WorldDrawItem(float footY, EWorldDrawKind kind, int x, int y, int index)
+        {
+            FootY = footY;
+            Kind = kind;
+            X = x;
+            Y = y;
+            Index = index;
+        }
     }
 
     private sealed class FloatingText

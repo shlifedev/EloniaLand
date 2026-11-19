@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Elonia.Data;
 using Elonia.Simulation;
 
 namespace Elonia.Playtest;
@@ -24,194 +25,179 @@ internal static class TownMap
         "TT.#:::#...==========.................b.......TT",
         "TT.#:::#...=........=.........T...............TT",
         "TT.##G##...=...AAA..=....!..............s.....TT",
-        "TT.........=...AAA..=.........................TT",
+        "TT.........=...AAA..=.......^.................TT",
         "TT....@....=...AAA..=......b.........T.....$..TT",
-        "TT.........=....=...=.........................TT",
+        "TT......^..=....=...=.........^.......^.......TT",
         "TT..b......======...=....T.......s............TT",
-        "TT..................=..............m......T...TT",
-        "TTT....v............=.....$...................TT",
-        "TTT.......T.........=............b....x.......TT",
-        "TT....$.............=......T..................TT",
-        "TT.........b........=..................$......TT",
-        "TT..T...............=.......m.......T.........TT",
+        "TT..wwwwwwwww.......=..............m......T...TT",
+        "TTT.w,,,w,,,w..v....=.....$...................TT",
+        "TTT.w,,,w,,,w.......=............b....x.......TT",
+        "TT..w,,,,,,,w..$....=......T..................TT",
+        "TT..w,,,,,,,w.......=..................$......TT",
+        "TT..wwDwwwwww.......=.......m.......T.........TT",
         "TT......!.....T.....=.....................!...TT",
         "TT..................=..........b..............TT",
         "TTTTTTTTTTTTTTTTTTTT=TTTTTTTTTTTTTTTTTTTTTTTTTTT",
         "TTTTTTTTTTTTTTTTTTTT=TTTTTTTTTTTTTTTTTTTTTTTTTTT",
     };
 
-    private const int HOUSE_HEIGHT = 3;
-
-    public static GameSession Create(Random random)
+    public static GameSession Create(GameContent content, Random random)
     {
-        int width = ROWS[0].Length;
-        int height = ROWS.Length;
-        Map map = new Map(width, height);
-        Dictionary<(int X, int Y), Sprite> buildingSprites = new Dictionary<(int X, int Y), Sprite>();
+        return Create(content, random, ROWS);
+    }
 
-        for (int y = 0; y < height; y++)
+    public static GameSession Create(GameContent content, Random random, IReadOnlyList<string> rows)
+    {
+        if (rows.Count == 0 || rows[0].Length == 0)
         {
-            if (ROWS[y].Length != width)
-            {
-                throw new InvalidOperationException($"Map row {y} must be {width} tiles wide.");
-            }
-
-            for (int x = 0; x < width; x++)
-            {
-                map.SetTile(x, y, GetTileType(ROWS[y][x]));
-                if (IsHouseTopLeft(x, y))
-                {
-                    AddHouseSprites(buildingSprites, x, y);
-                }
-            }
+            throw new InvalidOperationException("마을 지도에는 한 칸 이상 있어야 합니다.");
         }
 
-        int nextActorID = 1;
+        Map map = new Map(rows[0].Length, rows.Count);
+        TownLegendRow[,] layout = new TownLegendRow[map.Height, map.Width];
+        Actor player = PlaceTerrainAndPlayer(content, rows, map, layout);
+        PlaceNpcs(content, layout, map, player, random);
+        PlaceThings(content, layout, map);
+
+        return new GameSession(new GameRunner(new World(map), player), CreateBuildingSprites(layout, content));
+    }
+
+    private static Actor PlaceTerrainAndPlayer(GameContent content, IReadOnlyList<string> rows, Map map, TownLegendRow[,] layout)
+    {
         Actor? playerOrNull = null;
-        for (int y = 0; y < height; y++)
+        for (int y = 0; y < map.Height; y++)
         {
-            for (int x = 0; x < width; x++)
+            if (rows[y].Length != map.Width)
             {
-                if (ROWS[y][x] == '@')
+                throw new InvalidOperationException($"마을 지도의 {y}행 너비가 {map.Width}와 다릅니다.");
+            }
+
+            for (int x = 0; x < map.Width; x++)
+            {
+                TownLegendRow legend = content.GetLegend(rows[y][x], x, y);
+                layout[y, x] = legend;
+                map.SetFloor(x, y, content.GetFloor(legend.Floor.Key));
+                if (legend.Prop.HasValue)
                 {
-                    playerOrNull = map.AddActor(new Actor(nextActorID, GameContent.HERO, x, y));
-                    nextActorID++;
+                    map.SetProp(x, y, content.GetProp(legend.Prop.Key));
+                }
+
+                if (legend.Actor.HasValue && content.GetActorRow(legend.Actor.Key).Behavior == EActorBehavior.Player)
+                {
+                    if (playerOrNull != null)
+                    {
+                        throw new InvalidOperationException($"마을 지도에 플레이어 시작 지점이 둘 이상입니다. ({playerOrNull.X}, {playerOrNull.Y}), ({x}, {y})");
+                    }
+
+                    playerOrNull = map.AddEntity(new Actor(map.CreateEntityID(), content.GetActor(legend.Actor.Key), x, y));
                 }
             }
         }
 
-        if (playerOrNull == null)
-        {
-            throw new InvalidOperationException("The map needs a player start (@).");
-        }
+        return playerOrNull ?? throw new InvalidOperationException("마을 지도에 플레이어 시작 지점이 없습니다.");
+    }
 
-        for (int y = 0; y < height; y++)
+    private static void PlaceNpcs(GameContent content, TownLegendRow[,] layout, Map map, Actor player, Random random)
+    {
+        for (int y = 0; y < map.Height; y++)
         {
-            for (int x = 0; x < width; x++)
+            for (int x = 0; x < map.Width; x++)
             {
-                char symbol = ROWS[y][x];
-                Brain? brainOrNull = CreateBrainOrNull(symbol, playerOrNull, random);
-                if (brainOrNull != null)
+                ActorRef actor = layout[y, x].Actor;
+                if (!actor.HasValue)
                 {
-                    map.AddActor(new Actor(nextActorID, GetNpcType(symbol), x, y, brainOrNull));
-                    nextActorID++;
+                    continue;
                 }
-                else if (symbol == '!')
+
+                ActorRow row = content.GetActorRow(actor.Key);
+                if (row.Behavior != EActorBehavior.Player)
                 {
-                    map.AddItem(new Item(EItemType.Potion, x, y, GameContent.POTION_HEAL));
-                }
-                else if (symbol == '$')
-                {
-                    map.AddItem(new Item(EItemType.Gold, x, y, GameContent.GOLD_AMOUNT));
+                    Brain brain = CreateBrain(row, player, random);
+                    map.AddEntity(new Actor(map.CreateEntityID(), content.GetActor(row.Id), x, y, brain));
                 }
             }
         }
-
-        return new GameSession(new GameRunner(new World(map), playerOrNull), buildingSprites);
     }
 
-    private static TileType GetTileType(char symbol)
+    private static void PlaceThings(GameContent content, TownLegendRow[,] layout, Map map)
     {
-        switch (symbol)
+        for (int y = 0; y < map.Height; y++)
         {
-            case '=':
-                return GameContent.PATH;
-            case ':':
-                return GameContent.DIRT;
-            case 'G':
-                return GameContent.GATE;
-            case 'T':
-                return GameContent.TREE;
-            case 'b':
-                return GameContent.BUSH;
-            case '#':
-                return GameContent.FENCE;
-            case 'A':
-            case 'B':
-                return GameContent.BUILDING;
-            case 'W':
-                return GameContent.WELL;
-            case 'S':
-                return GameContent.SIGN;
-            default:
-                return GameContent.GRASS;
+            for (int x = 0; x < map.Width; x++)
+            {
+                ThingRef thing = layout[y, x].Thing;
+                if (thing.HasValue)
+                {
+                    map.AddEntity(new Thing(map.CreateEntityID(), content.GetThing(thing.Key), x, y));
+                }
+            }
         }
     }
 
-    private static Brain? CreateBrainOrNull(char symbol, Actor player, Random random)
+    private static Brain CreateBrain(ActorRow row, Actor player, Random random)
     {
-        switch (symbol)
+        switch (row.Behavior)
         {
-            case 'v':
+            case EActorBehavior.Wander:
                 return new Brain(new WanderBehavior(random));
-            case 'm':
+            case EActorBehavior.Flee:
                 return new Brain(
-                    new FleeBehavior(player, GameContent.RAT_SENSE_RANGE),
+                    new FleeBehavior(player, row.SenseRange),
                     new WanderBehavior(random));
-            case 's':
-                return new Brain(
-                    new AttackBehavior(player),
-                    new ChaseBehavior(player, GameContent.SLIME_SENSE_RANGE),
-                    new WanderBehavior(random));
-            case 'x':
+            case EActorBehavior.ChaseAttack:
                 return new Brain(
                     new AttackBehavior(player),
-                    new ChaseBehavior(player, GameContent.BAT_SENSE_RANGE),
+                    new ChaseBehavior(player, row.SenseRange),
                     new WanderBehavior(random));
             default:
-                return null;
+                throw new InvalidOperationException($"Actor 표의 '{row.Id}'에 지원하지 않는 NPC 행동 '{row.Behavior}'이 있습니다.");
         }
     }
 
-    private static ActorType GetNpcType(char symbol)
+    private static Dictionary<(int X, int Y, PropType Prop), Sprite> CreateBuildingSprites(TownLegendRow[,] layout, GameContent content)
     {
-        switch (symbol)
+        Dictionary<(int X, int Y, PropType Prop), Sprite> sprites = new Dictionary<(int X, int Y, PropType Prop), Sprite>();
+        int height = layout.GetLength(0);
+        int width = layout.GetLength(1);
+        for (int y = 0; y < height; y++)
         {
-            case 'v':
-                return GameContent.VILLAGER;
-            case 'm':
-                return GameContent.RAT;
-            case 's':
-                return GameContent.SLIME;
-            default:
-                return GameContent.BAT;
-        }
-    }
-
-    private static bool IsHouse(int x, int y, char symbol)
-    {
-        return x >= 0 && y >= 0 && y < ROWS.Length && x < ROWS[y].Length && ROWS[y][x] == symbol;
-    }
-
-    private static bool IsHouseTopLeft(int x, int y)
-    {
-        char symbol = ROWS[y][x];
-        if (symbol != 'A' && symbol != 'B')
-        {
-            return false;
-        }
-
-        return !IsHouse(x - 1, y, symbol) && !IsHouse(x, y - 1, symbol);
-    }
-
-    private static void AddHouseSprites(Dictionary<(int X, int Y), Sprite> sprites, int left, int top)
-    {
-        char symbol = ROWS[top][left];
-        int width = 0;
-        while (IsHouse(left + width, top, symbol))
-        {
-            width++;
-        }
-
-        for (int row = 0; row < HOUSE_HEIGHT; row++)
-        {
-            for (int column = 0; column < width; column++)
+            int x = 0;
+            while (x < width)
             {
-                Sprite sprite = symbol == 'A'
-                    ? Art.GetWoodHouseSprite(column, row, width)
-                    : Art.GetStoneHouseSprite(column, row, width);
-                sprites.Add((left + column, top + row), sprite);
+                EHouseStyle style = layout[y, x].HouseStyle;
+                if (style == EHouseStyle.None)
+                {
+                    x++;
+                    continue;
+                }
+
+                int left = x;
+                while (x < width && layout[y, x].HouseStyle == style)
+                {
+                    x++;
+                }
+
+                int top = y;
+                while (top > 0 && layout[top - 1, left].HouseStyle == style)
+                {
+                    top--;
+                }
+
+                int houseWidth = x - left;
+                for (int column = 0; column < houseWidth; column++)
+                {
+                    Sprite sprite = style switch
+                    {
+                        EHouseStyle.Wood => Art.GetWoodHouseSprite(column, y - top, houseWidth),
+                        EHouseStyle.Stone => Art.GetStoneHouseSprite(column, y - top, houseWidth),
+                        _ => throw new InvalidOperationException($"({left + column}, {y})에 지원하지 않는 집 외형 '{style}'이 있습니다."),
+                    };
+                    PropType prop = content.GetProp(layout[y, left + column].Prop.Key);
+                    sprites.Add((left + column, y, prop), sprite);
+                }
             }
         }
+
+        return sprites;
     }
 }

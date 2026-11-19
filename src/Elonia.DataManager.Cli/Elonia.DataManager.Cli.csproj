@@ -5,6 +5,7 @@
     <RootNamespace>Elonia.DataManager.Cli</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="ZLinq" Version="1.6.1" />
     <ProjectReference Include="../Elonia.DataManager/Elonia.DataManager.csproj" />
   </ItemGroup>
 </Project>

@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Numerics;
 using Raylib_cs;
 
@@ -19,6 +20,8 @@ internal static class Program
         DemoScript? demoOrNull = options.HasDemo ? new DemoScript(options.DemoCommandsOrNull ?? "", options.ScreenshotPathOrNull) : null;
         int seed = options.SeedOrNull ?? (options.HasDemo ? DEMO_SEED : CreateRandomSeed());
 
+        GameContent content = GameContent.Load(Path.Combine(AppContext.BaseDirectory, "Tables"));
+
         Raylib.SetConfigFlags(ConfigFlags.VSyncHint);
         Raylib.InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Elonia");
         Raylib.SetTargetFPS(60);
@@ -28,7 +31,7 @@ internal static class Program
         ImGuiLayer imGui = new ImGuiLayer();
         try
         {
-            Game game = new Game(atlas, font, seed, SCREEN_WIDTH, SCREEN_HEIGHT, options.ShouldOpenDebugger);
+            Game game = new Game(content, atlas, font, seed, SCREEN_WIDTH, SCREEN_HEIGHT, options.ShouldOpenDebugger);
             PlayerInput input = new PlayerInput();
 
             while (!Raylib.WindowShouldClose())
@@ -46,7 +49,7 @@ internal static class Program
 
                 if (command == EPlayerCommand.Restart)
                 {
-                    game = new Game(atlas, font, CreateRandomSeed(), SCREEN_WIDTH, SCREEN_HEIGHT, game.IsDebuggerOpen);
+                    game = new Game(content, atlas, font, CreateRandomSeed(), SCREEN_WIDTH, SCREEN_HEIGHT, game.IsDebuggerOpen);
                 }
                 else if (command != EPlayerCommand.None)
                 {

@@ -45,6 +45,13 @@ public static partial class Program
             WriteXlsx(badPath, new Workbook("Bad.xlsx", new Sheet[] { bad, strange }));
             Check(workspace.HasInputChanged(), "A new file is a change.");
 
+            DiagnosticBag listDiagnostics = new DiagnosticBag();
+            IReadOnlyList<WorkbookInfo> listed = new XlsxWorkbookSource(input).List(listDiagnostics);
+            Check(listed.Count == 2 && !listDiagnostics.HasErrors, "목록은 잠금 파일을 건너뛰고 셀 값이나 시트 이름의 작성 규칙을 검사하지 않는다.");
+            Check(listed[0].Name == "Bad.xlsx" && listed[0].SheetNames.Count == 2 && listed[0].SheetNames[1] == "A.B.C",
+                "목록은 파일 이름순과 원본 탭 순서를 보존한다.");
+            Check(!Directory.Exists(code), "목록 조회는 생성물을 쓰지 않는다.");
+
             Check(workspace.BuildOrNull() == null, "A build with errors returns nothing.");
             Check(!Directory.Exists(code), "A build with errors writes nothing.");
             TableBuildResult failed = workspace.ResultOrNull!;
@@ -75,11 +82,31 @@ public static partial class Program
                 "A build without errors writes the code and the data.");
             CommitReport? again = workspace.BuildOrNull();
             Check(again != null && !again.HasChanges, "Building again changes nothing.");
+
+            CheckWorkspaceSource(root);
         }
         finally
         {
             Directory.Delete(root, true);
         }
+    }
+
+    private static void CheckWorkspaceSource(string root)
+    {
+        string code = Path.Combine(root, "MemoryOutput");
+        string data = Path.Combine(code, "Bytes");
+        Workbook workbook = Fixture.CreateWorkbook();
+        MemoryWorkbookSource source = new MemoryWorkbookSource(workbook);
+        TableWorkspace workspace = new TableWorkspace(source, code, data, Fixture.CreateOptions());
+
+        Check(workspace.InputDirectory.Length == 0 && !workspace.HasInputChanged(), "주입한 원본은 입력 폴더 없이 사용할 수 있다.");
+        TableBuildResult result = workspace.Refresh();
+        Check(result.IsSuccess && result.Workbooks.Count == 1 && ReferenceEquals(result.Workbooks[0], workbook), "검증은 주입한 통합문서를 읽는다.");
+        Check(!Directory.Exists(code), "메모리 원본의 검증은 출력 폴더를 만들지 않는다.");
+        CommitReport? report = workspace.BuildOrNull();
+        Check(report != null && report.HasChanges && File.Exists(Path.Combine(data, "Item.bytes"))
+            && File.Exists(Path.Combine(code, "ItemRow.g.cs")), "주입한 원본으로 코드와 bytes를 함께 생성한다.");
+        Check(!workspace.HasInputChanged(), "출력 파일이 바뀌어도 원본의 변경으로 처리하지 않는다.");
     }
 
     private static void WriteXlsx(string path, Workbook workbook)

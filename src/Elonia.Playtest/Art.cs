@@ -7,11 +7,14 @@ internal static class Art
     public static readonly Sprite POTION = Sprite.Dungeon(115);
     public static readonly Sprite GOLD = Sprite.Town(93);
     public static readonly Sprite BRANCH = Sprite.Town(106);
+    public static readonly Sprite SPIKE_TRAP = Sprite.Dungeon(41);
 
     private static readonly Sprite GRASS_PLAIN = Sprite.Town(0);
     private static readonly Sprite GRASS_TUFTS = Sprite.Town(1);
     private static readonly Sprite GRASS_FLOWERS = Sprite.Town(2);
     private static readonly Sprite PATH = Sprite.Town(43);
+
+    private static readonly Sprite WOOD_FLOOR = Sprite.Town(73);
     private static readonly Sprite BUSH = Sprite.Town(5);
     private static readonly Sprite WELL = Sprite.Town(104);
     private static readonly Sprite SIGN = Sprite.Town(83);
@@ -35,15 +38,20 @@ internal static class Art
 
     public static Sprite GetGround(Map map, int x, int y)
     {
-        TileType tile = map.GetTile(x, y);
-        if (tile == GameContent.PATH)
+        FloorType floor = map.GetFloor(x, y);
+        if (floor.Id == "path")
         {
             return PATH;
         }
 
-        if (tile == GameContent.DIRT)
+        if (floor.Id == "dirt")
         {
-            return GetDirtPiece(map, x, y);
+            return GetDirtPiece(map, x, y, floor);
+        }
+
+        if (floor.Id == "wood_floor")
+        {
+            return WOOD_FLOOR;
         }
 
         int variant = GetVariant(x, y) % 10;
@@ -55,11 +63,15 @@ internal static class Art
         return variant >= 6 ? GRASS_TUFTS : GRASS_PLAIN;
     }
 
-    public static Sprite? GetObjectOrNull(GameSession session, int x, int y)
+    public static Sprite? GetPropSpriteOrNull(Map map, int x, int y)
     {
-        Map map = session.Map;
-        TileType tile = map.GetTile(x, y);
-        if (tile == GameContent.TREE)
+        PropType? propOrNull = map.GetPropOrNull(x, y);
+        if (propOrNull == null)
+        {
+            return null;
+        }
+
+        if (propOrNull.Id == "tree")
         {
             switch (GetTreeKind(x, y))
             {
@@ -74,34 +86,29 @@ internal static class Art
             }
         }
 
-        if (tile == GameContent.BUSH)
+        if (propOrNull.Id == "bush")
         {
             return BUSH;
         }
 
-        if (tile == GameContent.FENCE)
+        if (propOrNull.Id == "fence")
         {
             return GetFencePiece(map, x, y);
         }
 
-        if (tile == GameContent.GATE)
+        if (propOrNull.Id == "gate")
         {
             return GATE;
         }
 
-        if (tile == GameContent.WELL)
+        if (propOrNull.Id == "well")
         {
             return WELL;
         }
 
-        if (tile == GameContent.SIGN)
+        if (propOrNull.Id == "sign")
         {
             return SIGN;
-        }
-
-        if (tile == GameContent.BUILDING && session.BuildingSprites.TryGetValue((x, y), out Sprite building))
-        {
-            return building;
         }
 
         return null;
@@ -109,7 +116,7 @@ internal static class Art
 
     public static Sprite? GetTreeTopOrNull(Map map, int x, int y)
     {
-        if (map.GetTile(x, y) != GameContent.TREE)
+        if (map.GetPropOrNull(x, y)?.Id != "tree")
         {
             return null;
         }
@@ -125,25 +132,41 @@ internal static class Art
         }
     }
 
+    public static WallPiece? GetWallPieceOrNull(Map map, int x, int y)
+    {
+        PropType? propOrNull = map.GetPropOrNull(x, y);
+        if (propOrNull?.Id is not ("wall" or "door"))
+        {
+            return null;
+        }
+
+        return new WallPiece(
+            propOrNull.Id == "door",
+            IsWall(map, x, y - 1),
+            IsWall(map, x, y + 1),
+            IsWall(map, x - 1, y),
+            IsWall(map, x + 1, y));
+    }
+
     public static Sprite GetActorSprite(Actor actor)
     {
         ActorType type = actor.Type;
-        if (type == GameContent.HERO)
+        if (type.Id == "hero")
         {
             return HERO;
         }
 
-        if (type == GameContent.RAT)
+        if (type.Id == "rat")
         {
             return RAT;
         }
 
-        if (type == GameContent.SLIME)
+        if (type.Id == "slime")
         {
             return SLIME;
         }
 
-        if (type == GameContent.BAT)
+        if (type.Id == "bat")
         {
             return BAT;
         }
@@ -151,17 +174,24 @@ internal static class Art
         return VILLAGERS[actor.ID % VILLAGERS.Length];
     }
 
-    public static Sprite GetItemSprite(EItemType type)
+    public static Sprite GetThingSprite(ThingType type)
     {
-        switch (type)
+        if (type.Id == "potion")
         {
-            case EItemType.Potion:
-                return POTION;
-            case EItemType.Branch:
-                return BRANCH;
-            default:
-                return GOLD;
+            return POTION;
         }
+
+        if (type.Id == "branch")
+        {
+            return BRANCH;
+        }
+
+        if (type.Id == "spike_trap")
+        {
+            return SPIKE_TRAP;
+        }
+
+        return GOLD;
     }
 
     public static Sprite GetWoodHouseSprite(int column, int row, int width)
@@ -205,12 +235,12 @@ internal static class Art
         return Sprite.Town(bRight ? wallRight : wall);
     }
 
-    private static Sprite GetDirtPiece(Map map, int x, int y)
+    private static Sprite GetDirtPiece(Map map, int x, int y, FloorType floor)
     {
-        bool bNorth = IsTile(map, x, y - 1, GameContent.DIRT);
-        bool bSouth = IsTile(map, x, y + 1, GameContent.DIRT);
-        bool bWest = IsTile(map, x - 1, y, GameContent.DIRT);
-        bool bEast = IsTile(map, x + 1, y, GameContent.DIRT);
+        bool bNorth = IsFloor(map, x, y - 1, floor);
+        bool bSouth = IsFloor(map, x, y + 1, floor);
+        bool bWest = IsFloor(map, x - 1, y, floor);
+        bool bEast = IsFloor(map, x + 1, y, floor);
         int row = !bNorth ? 0 : (bSouth ? 1 : 2);
         int column = !bWest ? 0 : (bEast ? 1 : 2);
         return Sprite.Town(DIRT_TOP_LEFT + row * SHEET_COLUMN_COUNT + column);
@@ -264,12 +294,17 @@ internal static class Art
 
     private static bool IsFence(Map map, int x, int y)
     {
-        return IsTile(map, x, y, GameContent.FENCE) || IsTile(map, x, y, GameContent.GATE);
+        return map.IsInside(x, y) && map.GetPropOrNull(x, y)?.Id is "fence" or "gate";
     }
 
-    private static bool IsTile(Map map, int x, int y, TileType type)
+    private static bool IsWall(Map map, int x, int y)
     {
-        return map.IsInside(x, y) && map.GetTile(x, y) == type;
+        return map.IsInside(x, y) && map.GetPropOrNull(x, y)?.Id is "wall" or "door";
+    }
+
+    private static bool IsFloor(Map map, int x, int y, FloorType type)
+    {
+        return map.IsInside(x, y) && map.GetFloor(x, y) == type;
     }
 
     private enum ETreeKind

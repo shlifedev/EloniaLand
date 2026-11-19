@@ -1,5 +1,3 @@
-using System;
-
 namespace Elonia.Simulation
 {
     public readonly struct Interaction
@@ -36,7 +34,7 @@ namespace Elonia.Simulation
 
         public bool IsInReach(Actor actor)
         {
-            return Math.Abs(actor.X - TargetX) + Math.Abs(actor.Y - TargetY) == Reach;
+            return GridMath.GetManhattanDistance(actor.X, actor.Y, TargetX, TargetY) == Reach;
         }
     }
 }

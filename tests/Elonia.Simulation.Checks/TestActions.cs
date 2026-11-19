@@ -16,6 +16,15 @@ internal static class TestActors
     }
 }
 
+internal static class TestItems
+{
+    public const int POTION_HEAL = 5;
+
+    public static readonly ThingType POTION = new ThingType("Potion", new ItemPart(EItemEffect.Heal, POTION_HEAL));
+    public static readonly ThingType GOLD = new ThingType("Gold", new ItemPart(EItemEffect.Gold, 1));
+    public static readonly ThingType BRANCH = new ThingType("Branch", new ItemPart(EItemEffect.None, 1));
+}
+
 internal sealed class EventRecorder : IEventListener<ActorAttacked>, IEventListener<ActorDied>, IEventListener<ItemPickedUp>
 {
     public List<string> Log { get; } = new List<string>();
@@ -32,7 +41,7 @@ internal sealed class EventRecorder : IEventListener<ActorAttacked>, IEventListe
 
     public void OnEvent(ItemPickedUp message)
     {
-        Log.Add($"pickup {message.Actor.ID} {message.Item.Type} {message.Item.Amount}");
+        Log.Add($"pickup {message.Actor.ID} {message.Thing.Type.Name} {message.Amount}");
     }
 }
 
@@ -107,6 +116,22 @@ internal sealed class SwitchBehavior : IBehavior
     {
         ChooseCount++;
         return WaitAction.DEFAULT;
+    }
+}
+
+internal sealed class PacingController : IActorController
+{
+    private MoveAction _direction = MoveAction.RIGHT;
+
+    public ActorAction ChooseAction(ActionContext context)
+    {
+        Actor actor = context.Actor;
+        if (!context.Map.CanEnter(actor.X + _direction.DeltaX, actor.Y))
+        {
+            _direction = _direction == MoveAction.RIGHT ? MoveAction.LEFT : MoveAction.RIGHT;
+        }
+
+        return _direction;
     }
 }
 

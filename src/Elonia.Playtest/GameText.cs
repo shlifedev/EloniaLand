@@ -11,122 +11,76 @@ internal static class GameText
 
     public static string GetActorTypeName(ActorType type)
     {
-        if (type == GameContent.HERO)
+        return type.Id switch
         {
-            return "영웅";
-        }
-
-        if (type == GameContent.VILLAGER)
-        {
-            return "마을 사람";
-        }
-
-        if (type == GameContent.RAT)
-        {
-            return "쥐";
-        }
-
-        if (type == GameContent.SLIME)
-        {
-            return "슬라임";
-        }
-
-        if (type == GameContent.BAT)
-        {
-            return "박쥐";
-        }
-
-        return type.Name;
+            "hero" => "영웅",
+            "villager" => "마을 사람",
+            "rat" => "쥐",
+            "slime" => "슬라임",
+            "bat" => "박쥐",
+            _ => type.Name
+        };
     }
 
-    public static string GetTileName(TileType type)
+    public static string GetFloorName(FloorType type)
     {
-        if (type == GameContent.GRASS)
+        return type.Id switch
         {
-            return "잔디";
-        }
-
-        if (type == GameContent.PATH)
-        {
-            return "돌길";
-        }
-
-        if (type == GameContent.DIRT)
-        {
-            return "흙";
-        }
-
-        if (type == GameContent.GATE)
-        {
-            return "울타리 문";
-        }
-
-        if (type == GameContent.TREE)
-        {
-            return "나무";
-        }
-
-        if (type == GameContent.BUSH)
-        {
-            return "덤불";
-        }
-
-        if (type == GameContent.FENCE)
-        {
-            return "울타리";
-        }
-
-        if (type == GameContent.BUILDING)
-        {
-            return "건물";
-        }
-
-        if (type == GameContent.WELL)
-        {
-            return "우물";
-        }
-
-        if (type == GameContent.SIGN)
-        {
-            return "표지판";
-        }
-
-        return type.Name;
+            "grass" => "잔디",
+            "path" => "돌길",
+            "dirt" => "흙",
+            "wood_floor" => "나무 바닥",
+            _ => type.Name
+        };
     }
 
-    public static string GetItemName(EItemType type)
+    public static string GetPropName(PropType type)
     {
-        switch (type)
+        return type.Id switch
         {
-            case EItemType.Potion:
-                return "물약";
-            case EItemType.Gold:
-                return "골드";
-            case EItemType.Branch:
-                return "나뭇가지";
-            default:
-                return type.ToString();
-        }
+            "tree" => "나무",
+            "bush" => "덤불",
+            "fence" => "울타리",
+            "gate" => "울타리 문",
+            "building" => "건물",
+            "well" => "우물",
+            "sign" => "표지판",
+            "wall" => "벽",
+            "door" => "문",
+            _ => type.Name
+        };
     }
 
-    public static string GetPickUpLabel(EItemType type)
+    public static string GetThingName(ThingType type)
     {
-        if (type == EItemType.Potion)
+        return type.Id switch
+        {
+            "potion" => "물약",
+            "gold" => "골드",
+            "branch" => "나뭇가지",
+            "spike_trap" => "가시 함정",
+            _ => type.Name
+        };
+    }
+
+    public static string GetPickUpLabel(ThingType type)
+    {
+        if (type.Id == "potion")
         {
             return "물약 마시기";
         }
 
-        return ZString.Concat(GetItemName(type), " 줍기");
+        return ZString.Concat(GetThingName(type), " 줍기");
     }
 
-    public static string GetHarvestLabel(TileType tile)
+    public static string GetHarvestLabel(PropType prop)
     {
-        if (tile == GameContent.TREE)
+        if (prop.Id == "tree")
         {
             return "나무 베기";
         }
 
-        return ZString.Concat(GetTileName(tile), " 캐기");
+        return ZString.Concat(GetPropName(prop), " 캐기");
     }
 
     public static string GetInteractionLabel(Interaction interaction, Map map)
@@ -136,9 +90,10 @@ internal static class GameText
             case AttackAction attack:
                 return ZString.Concat(GetActorTypeName(attack.Target.Type), " 공격");
             case HarvestAction harvest:
-                return GetHarvestLabel(map.GetTile(harvest.TargetX, harvest.TargetY));
+                PropType? propOrNull = map.GetPropOrNull(harvest.TargetX, harvest.TargetY);
+                return propOrNull != null ? GetHarvestLabel(propOrNull) : "캐기";
             case PickUpAction _:
-                Item? itemOrNull = map.GetItemAtOrNull(interaction.TargetX, interaction.TargetY);
+                Thing? itemOrNull = map.GetItemAtOrNull(interaction.TargetX, interaction.TargetY);
                 return itemOrNull != null ? GetPickUpLabel(itemOrNull.Type) : "줍기";
             default:
                 return interaction.Action.Name;

@@ -37,8 +37,30 @@ namespace Elonia.Simulation
                 return ActionResult.REJECTED;
             }
 
-            actor.MoveTo(nextX, nextY);
+            context.Map.MoveActor(actor, nextX, nextY);
+            TriggerSteppedThings(context, actor);
             return ActionResult.Executed(DEFAULT_COST);
+        }
+
+        private static void TriggerSteppedThings(ActionContext context, Actor actor)
+        {
+            IReadOnlyList<Thing> things = context.Map.GetCell(actor.X, actor.Y).Things;
+            for (int index = 0; index < things.Count; index++)
+            {
+                Thing thing = things[index];
+                StepTriggerPart? stepTriggerOrNull = thing.Type.GetPartOrNull<StepTriggerPart>();
+                if (stepTriggerOrNull == null)
+                {
+                    continue;
+                }
+
+                context.World.Events.Broadcast(new StepTriggered(actor, thing));
+                stepTriggerOrNull.Effect.Apply(context, actor);
+                if (!actor.IsAlive)
+                {
+                    break;
+                }
+            }
         }
     }
 }

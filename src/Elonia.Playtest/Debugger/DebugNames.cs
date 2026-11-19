@@ -51,14 +51,19 @@ internal static class DebugNames
         }
     }
 
-    public static string GetTileName(TileType type)
+    public static string GetFloorName(FloorType type)
     {
-        return GameText.GetTileName(type);
+        return GameText.GetFloorName(type);
     }
 
-    public static string GetItemName(Item item)
+    public static string GetPropName(PropType type)
     {
-        return GameText.GetItemName(item.Type);
+        return GameText.GetPropName(type);
+    }
+
+    public static string GetThingName(Thing thing)
+    {
+        return GameText.GetThingName(thing.Type);
     }
 
     private static string GetDirectionName(int deltaX, int deltaY)

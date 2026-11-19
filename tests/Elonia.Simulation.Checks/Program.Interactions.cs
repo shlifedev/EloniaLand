@@ -7,20 +7,20 @@ public static partial class Program
 {
     private static void CheckInteractions()
     {
-        TileType tree = new TileType("Tree", false, new TileHarvest(TileType.GROUND, EItemType.Branch, 1));
-        TileType wall = new TileType("Wall", false);
+        PropType tree = new PropType("Tree", false, new PropHarvest(TestItems.BRANCH, 1));
+        PropType wall = new PropType("Wall", false);
         ActorType monsterType = new ActorType("Monster", 10, 1, 1, true);
         Check(monsterType.IsHostile && !new ActorType("Villager", 10, 1, 1).IsHostile, "An actor type is hostile only when asked.");
 
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
         World world = new World(map);
-        map.SetTile(8, 5, tree);
-        map.SetTile(8, 6, wall);
-        Actor player = map.AddActor(TestActors.Create(1, 5, 5, 10));
-        Actor monster = map.AddActor(new Actor(2, monsterType, 6, 5, new FixedController(WaitAction.DEFAULT)));
-        map.AddActor(TestActors.Create(3, 5, 6, 1, new FixedController(WaitAction.DEFAULT)));
-        map.AddItem(new Item(EItemType.Branch, 3, 5, 2));
-        map.AddItem(new Item(EItemType.Gold, 6, 5, 1));
+        map.SetProp(8, 5, tree);
+        map.SetProp(8, 6, wall);
+        Actor player = map.AddEntity(TestActors.Create(1, 5, 5, 10));
+        Actor monster = map.AddEntity(new Actor(2, monsterType, 6, 5, new FixedController(WaitAction.DEFAULT)));
+        map.AddEntity(TestActors.Create(3, 5, 6, 1, new FixedController(WaitAction.DEFAULT)));
+        map.AddEntity(new Thing(115, TestItems.BRANCH, 3, 5, 2));
+        map.AddEntity(new Thing(116, TestItems.GOLD, 6, 5, 1));
         GameRunner runner = new GameRunner(world, player);
         InteractionPlan plan = new InteractionPlan();
 
@@ -30,7 +30,7 @@ public static partial class Program
         plan.Collect(map, player, 4, 4);
         CheckEqual(0, plan.Items.Count, "An empty tile offers nothing.");
         plan.Collect(map, player, 8, 6);
-        CheckEqual(0, plan.Items.Count, "A tile that cannot be harvested offers nothing.");
+        CheckEqual(0, plan.Items.Count, "A prop that cannot be harvested offers nothing.");
         plan.Collect(map, player, 5, 6);
         CheckEqual(0, plan.Items.Count, "A non-hostile actor offers nothing.");
         plan.Collect(map, player, -1, 0);
@@ -39,12 +39,12 @@ public static partial class Program
         CheckEqual(0, plan.Items.Count, "An actor offers nothing to itself.");
 
         plan.Collect(map, player, 8, 5);
-        CheckEqual(1, plan.Items.Count, "A harvestable tile offers one interaction.");
+        CheckEqual(1, plan.Items.Count, "A harvestable prop offers one interaction.");
         Interaction harvest = plan.Items[0];
-        Check(harvest.Action is HarvestAction, "A harvestable tile offers a harvest.");
+        Check(harvest.Action is HarvestAction, "A harvestable prop offers a harvest.");
         CheckEqual("8,5,1", $"{harvest.TargetX},{harvest.TargetY},{harvest.Reach}", "A harvest targets the tile from one step away.");
         Check(!harvest.IsInReach(player), "A tile three steps away is not in reach yet.");
-        CheckEqual(EActionStatus.Rejected, runner.SubmitPlayerAction(harvest.Action).Status,
+        CheckEqual(false, runner.SubmitPlayerAction(harvest.Action).IsExecuted,
             "An interaction out of reach is rejected by its action.");
 
         plan.Collect(map, player, 3, 5);
@@ -67,7 +67,7 @@ public static partial class Program
         runner.SubmitPlayerAction(MoveAction.LEFT);
         Check(!attack.IsInReach(player), "Stepping away puts the monster out of reach.");
         runner.SubmitPlayerAction(MoveAction.RIGHT);
-        CheckEqual(EActionStatus.Executed, runner.SubmitPlayerAction(attack.Action).Status, "An interaction in reach can be submitted.");
+        CheckEqual(true, runner.SubmitPlayerAction(attack.Action).IsExecuted, "An interaction in reach can be submitted.");
         CheckEqual(10 - TestActors.ATTACK_POWER, monster.Hp, "The submitted interaction attacked the monster.");
 
         while (monster.IsAlive)

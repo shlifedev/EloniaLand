@@ -1,0 +1,6 @@
+{
+  "identifier": "main",
+  "description": "데이터매니저의 로컬 창",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using ExcelDataReader;
+using Cysharp.Text;
 
 namespace Elonia.DataManager
 {
@@ -28,7 +29,17 @@ namespace Elonia.DataManager
 
         public IReadOnlyList<Workbook> Load(DiagnosticBag diagnostics)
         {
-            List<Workbook> workbooks = new List<Workbook>();
+            return ReadFiles(diagnostics, Read);
+        }
+
+        public IReadOnlyList<WorkbookInfo> List(DiagnosticBag diagnostics)
+        {
+            return ReadFiles(diagnostics, ReadSheetNames);
+        }
+
+        private IReadOnlyList<T> ReadFiles<T>(DiagnosticBag diagnostics, Func<Stream, string, T> read)
+        {
+            List<T> workbooks = new List<T>();
             if (!Directory.Exists(_directory))
             {
                 diagnostics.AddError(_directory, "엑셀 파일을 둔 폴더가 없습니다.", "폴더 경로를 확인하세요.");
@@ -49,12 +60,12 @@ namespace Elonia.DataManager
                 {
                     using (FileStream stream = new FileStream(paths[index], FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
                     {
-                        workbooks.Add(Read(stream, fileName));
+                        workbooks.Add(read(stream, fileName));
                     }
                 }
-                catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException || exception is ExcelDataReader.Exceptions.ExcelReaderException)
+                catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException || exception is ExcelDataReader.Exceptions.ExcelReaderException || exception is InvalidDataException || exception is System.Xml.XmlException)
                 {
-                    diagnostics.AddError(fileName, "엑셀 파일을 읽지 못했습니다: " + exception.Message,
+                    diagnostics.AddError(fileName, ZString.Concat("엑셀 파일을 읽지 못했습니다: ", exception.Message),
                         "파일이 깨지지 않았는지, 다른 프로그램이 잠그고 있지 않은지 확인하세요.");
                 }
             }
@@ -65,6 +76,21 @@ namespace Elonia.DataManager
             }
 
             return workbooks;
+        }
+
+        private static WorkbookInfo ReadSheetNames(Stream stream, string name)
+        {
+            RegisterEncoding();
+            List<string> names = new List<string>();
+            using (IExcelDataReader reader = ExcelReaderFactory.CreateOpenXmlReader(stream))
+            {
+                do
+                {
+                    names.Add(reader.Name);
+                }
+                while (reader.NextResult());
+            }
+            return new WorkbookInfo(name, names);
         }
 
         public static Workbook Read(Stream stream, string name)

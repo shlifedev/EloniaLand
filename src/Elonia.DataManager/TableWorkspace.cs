@@ -12,11 +12,13 @@ namespace Elonia.DataManager
 
         private const string LOCK_FILE_PREFIX = "~$";
 
+        private readonly IWorkbookSource _source;
+
         private readonly Dictionary<CellOrigin, Diagnostic> _diagnosticsByCell = new Dictionary<CellOrigin, Diagnostic>();
 
         private string _inputStamp = "";
 
-        public string InputDirectory { get; }
+        public string InputDirectory { get; } = string.Empty;
         public string CodeDirectory { get; }
         public string DataDirectory { get; }
         public TableBuildOptions Options { get; }
@@ -24,17 +26,8 @@ namespace Elonia.DataManager
         public TableBuildResult? ResultOrNull { get; private set; }
 
         public TableWorkspace(string inputDirectory, string codeDirectory, string dataDirectory, TableBuildOptions options)
+            : this(new XlsxWorkbookSource(inputDirectory), codeDirectory, dataDirectory, options)
         {
-            if (string.IsNullOrEmpty(inputDirectory) || string.IsNullOrEmpty(codeDirectory) || string.IsNullOrEmpty(dataDirectory))
-            {
-                throw new ArgumentException("A workspace needs an input, a code and a data directory.");
-            }
-
-            if (options == null)
-            {
-                throw new ArgumentNullException(nameof(options));
-            }
-
             string inputPath = Path.GetFullPath(inputDirectory);
             if (inputPath == Path.GetFullPath(codeDirectory) || inputPath == Path.GetFullPath(dataDirectory))
             {
@@ -42,15 +35,29 @@ namespace Elonia.DataManager
             }
 
             InputDirectory = inputDirectory;
+        }
+
+        public TableWorkspace(IWorkbookSource source, string codeDirectory, string dataDirectory, TableBuildOptions options)
+        {
+            if (string.IsNullOrEmpty(codeDirectory) || string.IsNullOrEmpty(dataDirectory))
+            {
+                throw new ArgumentException("A workspace needs a code directory and a data directory.");
+            }
+
+            _source = source ?? throw new ArgumentNullException(nameof(source));
             CodeDirectory = codeDirectory;
             DataDirectory = dataDirectory;
-            Options = options;
+            Options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
         public TableBuildResult Refresh()
         {
-            _inputStamp = ReadInputStamp();
-            TableBuildResult result = TableBuild.Run(new XlsxWorkbookSource(InputDirectory), Options);
+            if (InputDirectory.Length > 0)
+            {
+                _inputStamp = ReadInputStamp();
+            }
+
+            TableBuildResult result = TableBuild.Run(_source, Options);
             ResultOrNull = result;
 
             _diagnosticsByCell.Clear();
@@ -88,7 +95,7 @@ namespace Elonia.DataManager
 
         public bool HasInputChanged()
         {
-            return ReadInputStamp() != _inputStamp;
+            return InputDirectory.Length > 0 && ReadInputStamp() != _inputStamp;
         }
 
         public Diagnostic? FindDiagnosticOrNull(CellOrigin origin)

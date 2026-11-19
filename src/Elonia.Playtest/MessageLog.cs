@@ -7,7 +7,8 @@ using Raylib_cs;
 
 namespace Elonia.Playtest;
 
-internal sealed class MessageLog : IEventListener<ActorAttacked>, IEventListener<ActorDied>, IEventListener<ItemPickedUp>, IEventListener<TileHarvested>
+internal sealed class MessageLog : IEventListener<ActorAttacked>, IEventListener<ActorDied>, IEventListener<ItemPickedUp>, IEventListener<PropHarvested>,
+    IEventListener<StepTriggered>, IEventListener<ActorDamaged>
 {
     public static readonly Color NORMAL = new Color(240, 236, 220, 255);
     public static readonly Color DANGER = new Color(255, 120, 110, 255);
@@ -77,29 +78,46 @@ internal sealed class MessageLog : IEventListener<ActorAttacked>, IEventListener
             return;
         }
 
-        switch (message.Item.Type)
+        string name = GameText.GetThingName(message.Thing.Type);
+        switch (message.Effect)
         {
-            case EItemType.Potion:
-                Add(ZString.Concat("물약을 마셨다. (체력 +", message.Item.Amount, ")"), GOOD);
+            case EItemEffect.Heal:
+                Add(ZString.Concat(GameText.WithObjectParticle(name), " 마셨다. (체력 +", message.Amount, ")"), GOOD);
                 break;
-            case EItemType.Gold:
-                Add(ZString.Concat(message.Item.Amount, " 골드를 주웠다."), GOLD);
+            case EItemEffect.Gold:
+                Add(ZString.Concat(message.Amount, " 골드를 주웠다."), GOLD);
                 break;
             default:
-                Add(ZString.Concat(GameText.WithObjectParticle(GameText.GetItemName(message.Item.Type)), " 주웠다. (x", message.Item.Amount, ")"), NORMAL);
+                Add(ZString.Concat(GameText.WithObjectParticle(name), " 주웠다. (x", message.Amount, ")"), NORMAL);
                 break;
         }
     }
 
-    public void OnEvent(TileHarvested message)
+    public void OnEvent(PropHarvested message)
     {
         if (message.Actor != _player)
         {
             return;
         }
 
-        Add(ZString.Concat(GameText.WithObjectParticle(GameText.GetTileName(message.HarvestedTile)), " 베었다. ",
-            GameText.WithSubjectParticle(GameText.GetItemName(message.DroppedItem.Type)), " 떨어졌다."), NORMAL);
+        Add(ZString.Concat(GameText.WithObjectParticle(GameText.GetPropName(message.HarvestedProp)), " 베었다. ",
+            GameText.WithSubjectParticle(GameText.GetThingName(message.DroppedThing.Type)), " 떨어졌다."), NORMAL);
+    }
+
+    public void OnEvent(StepTriggered message)
+    {
+        if (message.Actor == _player)
+        {
+            Add(ZString.Concat(GameText.WithObjectParticle(GameText.GetThingName(message.Thing.Type)), " 밟았다!"), DANGER);
+        }
+    }
+
+    public void OnEvent(ActorDamaged message)
+    {
+        if (message.Actor == _player)
+        {
+            Add(ZString.Concat(message.Damage, "의 피해를 입었다."), DANGER);
+        }
     }
 
     public void Update(float deltaTime)

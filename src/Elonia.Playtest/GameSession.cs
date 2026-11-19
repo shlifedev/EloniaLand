@@ -11,9 +11,9 @@ internal sealed class GameSession
     public Map Map => World.CurrentMap;
     public Actor Player => Runner.Player;
 
-    public IReadOnlyDictionary<(int X, int Y), Sprite> BuildingSprites { get; }
+    public IReadOnlyDictionary<(int X, int Y, PropType Prop), Sprite> BuildingSprites { get; }
 
-    public GameSession(GameRunner runner, IReadOnlyDictionary<(int X, int Y), Sprite> buildingSprites)
+    public GameSession(GameRunner runner, IReadOnlyDictionary<(int X, int Y, PropType Prop), Sprite> buildingSprites)
     {
         Runner = runner;
         BuildingSprites = buildingSprites;
