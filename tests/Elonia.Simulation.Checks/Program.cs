@@ -21,14 +21,16 @@ public static partial class Program
         Run(CheckActionCosts);
         Run(CheckTurnOrder);
         Run(CheckRejectedNpcActionFallsBackToWait);
-        Run(CheckNpcControllerTurnsAtEdge);
+        Run(CheckPacingControllerTurnsAtEdge);
         Run(CheckSetupValidation);
         Run(CheckBehaviorPriority);
         Run(CheckFleeBehavior);
         Run(CheckWanderBehavior);
         Run(CheckFleeInterruptsWander);
         Run(CheckBehaviorSetupValidation);
-        Run(CheckTiles);
+        Run(CheckMapLayers);
+        Run(CheckCells);
+        Run(CheckEntities);
         Run(CheckWorldOwnsTimeAcrossMaps);
         Run(CheckAttack);
         Run(CheckActorsBlockEachOther);
@@ -39,6 +41,7 @@ public static partial class Program
         Run(CheckItems);
         Run(CheckInventory);
         Run(CheckHarvest);
+        Run(CheckStepTriggers);
         Run(CheckInteractions);
         Run(CheckTypeValidation);
         Run(CheckActionExecutedEvent);
@@ -52,23 +55,23 @@ public static partial class Program
     private static GameRunner CreateDefault()
     {
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
-        Actor player = map.AddActor(TestActors.Create(1, 3, 4, 10));
-        map.AddActor(TestActors.Create(2, 3, 8, 5, new NpcController()));
+        Actor player = map.AddEntity(TestActors.Create(1, 3, 4, 10));
+        map.AddEntity(TestActors.Create(2, 3, 8, 5, new PacingController()));
         return new GameRunner(new World(map), player);
     }
 
     private static GameRunner CreateWithNpc(Actor npc)
     {
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
-        Actor player = map.AddActor(TestActors.Create(1, 3, 4, 10));
-        map.AddActor(npc);
+        Actor player = map.AddEntity(TestActors.Create(1, 3, 4, 10));
+        map.AddEntity(npc);
         return new GameRunner(new World(map), player);
     }
 
     private static GameRunner CreatePlayerOnly(int x, int y, int speed)
     {
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
-        Actor player = map.AddActor(TestActors.Create(1, x, y, speed));
+        Actor player = map.AddEntity(TestActors.Create(1, x, y, speed));
         return new GameRunner(new World(map), player);
     }
 
@@ -101,7 +104,7 @@ public static partial class Program
         GameRunner runner = CreatePlayerOnly(0, 0, 10);
 
         ActionResult result = runner.SubmitPlayerAction(MoveAction.LEFT);
-        CheckEqual(EActionStatus.Rejected, result.Status, "Moving off the map is rejected.");
+        CheckEqual(false, result.IsExecuted, "Moving off the map is rejected.");
         CheckEqual(10L, runner.World.Tick, "A rejected action does not advance time.");
         CheckEqual(0L, runner.Player.ActionCount, "A rejected action is not counted.");
         CheckEqual(100L, runner.Player.Energy, "A rejected action spends no energy.");
@@ -145,8 +148,8 @@ public static partial class Program
 
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
         World world = new World(map);
-        Actor player = map.AddActor(TestActors.Create(1, 3, 4, 100));
-        Actor cheapNpc = map.AddActor(TestActors.Create(2, 3, 8, 200, new FixedController(new CostAction(50))));
+        Actor player = map.AddEntity(TestActors.Create(1, 3, 4, 100));
+        Actor cheapNpc = map.AddEntity(TestActors.Create(2, 3, 8, 200, new FixedController(new CostAction(50))));
         GameRunner cheapNpcRunner = new GameRunner(world, player);
         cheapNpcRunner.SubmitPlayerAction(WaitAction.DEFAULT);
         CheckEqual(3L, cheapNpc.ActionCount, "Cheap actions let the NPC act repeatedly while ready.");
@@ -158,10 +161,10 @@ public static partial class Program
         List<int> executionOrder = new List<int>();
         CostAction recordingAction = new CostAction(100, executionOrder);
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
-        map.AddActor(TestActors.Create(9, 0, 0, 10, new FixedController(recordingAction)));
-        Actor player = map.AddActor(TestActors.Create(1, 3, 4, 10));
-        map.AddActor(TestActors.Create(2, 1, 0, 20, new FixedController(recordingAction)));
-        map.AddActor(TestActors.Create(5, 2, 0, 10, new FixedController(recordingAction)));
+        map.AddEntity(TestActors.Create(9, 0, 0, 10, new FixedController(recordingAction)));
+        Actor player = map.AddEntity(TestActors.Create(1, 3, 4, 10));
+        map.AddEntity(TestActors.Create(2, 1, 0, 20, new FixedController(recordingAction)));
+        map.AddEntity(TestActors.Create(5, 2, 0, 10, new FixedController(recordingAction)));
 
         GameRunner runner = new GameRunner(new World(map), player);
         CheckEqual("2,9", string.Join(",", executionOrder), "Actors before the player act before input.");
@@ -181,9 +184,9 @@ public static partial class Program
         CheckEqual(1L, runner.World.CurrentMap.Actors[1].ActionCount, "The rejected choice is replaced by a wait.");
     }
 
-    private static void CheckNpcControllerTurnsAtEdge()
+    private static void CheckPacingControllerTurnsAtEdge()
     {
-        GameRunner runner = CreateWithNpc(TestActors.Create(2, MAP_WIDTH - 2, 8, 10, new NpcController()));
+        GameRunner runner = CreateWithNpc(TestActors.Create(2, MAP_WIDTH - 2, 8, 10, new PacingController()));
         Actor npc = runner.World.CurrentMap.Actors[1];
 
         runner.SubmitPlayerAction(WaitAction.DEFAULT);
@@ -199,16 +202,16 @@ public static partial class Program
         CheckThrows<ArgumentException>(() => new MoveAction(2, 0), "Multi-tile moves are rejected at construction.");
 
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
-        CheckThrows<ArgumentException>(() => map.AddActor(TestActors.Create(1, MAP_WIDTH, 0, 10)),
+        CheckThrows<ArgumentException>(() => map.AddEntity(TestActors.Create(1, MAP_WIDTH, 0, 10)),
             "Actors outside the map are rejected.");
-        Actor player = map.AddActor(TestActors.Create(1, 0, 0, 10));
-        CheckThrows<ArgumentException>(() => map.AddActor(player), "The same actor cannot be added twice.");
+        Actor player = map.AddEntity(TestActors.Create(1, 0, 0, 10));
+        CheckThrows<ArgumentException>(() => map.AddEntity(player), "The same actor cannot be added twice.");
 
         CheckThrows<ArgumentException>(() => new GameRunner(new World(map), TestActors.Create(9, 0, 0, 10)),
             "The player must be in the current map.");
 
         Map controlledMap = new Map(MAP_WIDTH, MAP_HEIGHT);
-        Actor controlledPlayer = controlledMap.AddActor(TestActors.Create(1, 0, 0, 10, new NpcController()));
+        Actor controlledPlayer = controlledMap.AddEntity(TestActors.Create(1, 0, 0, 10, new PacingController()));
         CheckThrows<ArgumentException>(() => new GameRunner(new World(controlledMap), controlledPlayer),
             "The player must not have a controller.");
 
@@ -220,8 +223,8 @@ public static partial class Program
     private static GameRunner CreateWithBrain(int playerX, int playerY, Actor npc)
     {
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
-        Actor player = map.AddActor(TestActors.Create(1, playerX, playerY, 10));
-        map.AddActor(npc);
+        Actor player = map.AddEntity(TestActors.Create(1, playerX, playerY, 10));
+        map.AddEntity(npc);
         return new GameRunner(new World(map), player);
     }
 
@@ -256,10 +259,10 @@ public static partial class Program
     private static void CheckFleeBehavior()
     {
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
-        Actor player = map.AddActor(TestActors.Create(1, 5, 5, 10));
+        Actor player = map.AddEntity(TestActors.Create(1, 5, 5, 10));
         FleeBehavior flee = new FleeBehavior(player, 3);
         Brain brain = new Brain(flee);
-        Actor npc = map.AddActor(TestActors.Create(2, 7, 5, 10, brain));
+        Actor npc = map.AddEntity(TestActors.Create(2, 7, 5, 10, brain));
         GameRunner runner = new GameRunner(new World(map), player);
 
         runner.SubmitPlayerAction(WaitAction.DEFAULT);
@@ -278,15 +281,15 @@ public static partial class Program
         CheckEqual(10, npc.X, "The NPC flees again when the player approaches.");
 
         Map wallMap = new Map(MAP_WIDTH, MAP_HEIGHT);
-        Actor wallPlayer = wallMap.AddActor(TestActors.Create(1, 5, 2, 10));
-        Actor wallNpc = wallMap.AddActor(TestActors.Create(2, 5, 0, 10, new Brain(new FleeBehavior(wallPlayer, 3))));
+        Actor wallPlayer = wallMap.AddEntity(TestActors.Create(1, 5, 2, 10));
+        Actor wallNpc = wallMap.AddEntity(TestActors.Create(2, 5, 0, 10, new Brain(new FleeBehavior(wallPlayer, 3))));
         GameRunner wallRunner = new GameRunner(new World(wallMap), wallPlayer);
         wallRunner.SubmitPlayerAction(WaitAction.DEFAULT);
         CheckEqual("4,0", $"{wallNpc.X},{wallNpc.Y}", "Against a wall, the NPC sidesteps along it.");
 
         Map cornerMap = new Map(MAP_WIDTH, MAP_HEIGHT);
-        Actor cornerPlayer = cornerMap.AddActor(TestActors.Create(1, 2, 2, 10));
-        Actor cornerNpc = cornerMap.AddActor(TestActors.Create(2, 0, 0, 10, new Brain(new FleeBehavior(cornerPlayer, 3))));
+        Actor cornerPlayer = cornerMap.AddEntity(TestActors.Create(1, 2, 2, 10));
+        Actor cornerNpc = cornerMap.AddEntity(TestActors.Create(2, 0, 0, 10, new Brain(new FleeBehavior(cornerPlayer, 3))));
         GameRunner cornerRunner = new GameRunner(new World(cornerMap), cornerPlayer);
         cornerRunner.SubmitPlayerAction(WaitAction.DEFAULT);
         CheckEqual("0,0", $"{cornerNpc.X},{cornerNpc.Y}", "A cornered NPC stays in place.");
@@ -324,11 +327,11 @@ public static partial class Program
     private static void CheckFleeInterruptsWander()
     {
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
-        Actor player = map.AddActor(TestActors.Create(1, 3, 6, 10));
+        Actor player = map.AddEntity(TestActors.Create(1, 3, 6, 10));
         FleeBehavior flee = new FleeBehavior(player, 4);
         WanderBehavior wander = new WanderBehavior(new Random(7));
         Brain brain = new Brain(flee, wander);
-        Actor npc = map.AddActor(TestActors.Create(2, 15, 6, 10, brain));
+        Actor npc = map.AddEntity(TestActors.Create(2, 15, 6, 10, brain));
         GameRunner runner = new GameRunner(new World(map), player);
 
         runner.SubmitPlayerAction(WaitAction.DEFAULT);
@@ -393,12 +396,12 @@ public static partial class Program
         CheckThrows<ArgumentNullException>(() => new World(null!), "A world needs a current map.");
 
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
-        Actor player = map.AddActor(TestActors.Create(1, 3, 4, 10));
+        Actor player = map.AddEntity(TestActors.Create(1, 3, 4, 10));
         World world = new World(map);
         CheckEqual(map, world.CurrentMap, "The world simulates the map it was created with.");
 
         Map otherMap = new Map(MAP_WIDTH, MAP_HEIGHT);
-        Actor elsewhere = otherMap.AddActor(TestActors.Create(2, 3, 4, 10));
+        Actor elsewhere = otherMap.AddEntity(TestActors.Create(2, 3, 4, 10));
         CheckThrows<ArgumentException>(() => new GameRunner(world, elsewhere), "The player must be in the current map.");
 
         GameRunner runner = new GameRunner(world, player);
@@ -407,32 +410,57 @@ public static partial class Program
         CheckEqual(0L, elsewhere.Energy, "Actors in other maps gain no energy.");
     }
 
-    private static void CheckTiles()
+    private static void CheckMapLayers()
     {
-        TileType wall = new TileType("Wall", false);
+        PropType wall = new PropType("Wall", false);
+        PropType gate = new PropType("Gate", true);
+        FloorType dirt = new FloorType("Dirt", true);
+        FloorType water = new FloorType("Water", false);
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
         World world = new World(map);
-        CheckEqual(TileType.GROUND, map.GetTile(0, 0), "A new map is filled with ground.");
-        map.SetTile(5, 4, wall);
-        CheckEqual(wall, map.GetTile(5, 4), "A tile can be replaced.");
-        Check(map.IsWalkable(4, 4) && !map.IsWalkable(5, 4), "Walkability follows the tile type.");
-        Check(!map.IsWalkable(-1, 0) && !map.IsWalkable(0, MAP_HEIGHT), "Outside the map is never walkable.");
-        CheckThrows<ArgumentOutOfRangeException>(() => map.GetTile(MAP_WIDTH, 0), "Reading a tile outside the map is rejected.");
-        CheckThrows<ArgumentOutOfRangeException>(() => map.SetTile(0, -1, wall), "Writing a tile outside the map is rejected.");
-        CheckThrows<ArgumentNullException>(() => map.SetTile(0, 0, null!), "A null tile type is rejected.");
-        CheckThrows<ArgumentException>(() => map.AddActor(TestActors.Create(9, 5, 4, 10)), "Actors cannot be placed on a blocked tile.");
+        CheckEqual(FloorType.GROUND, map.GetFloor(0, 0), "A new map is filled with ground.");
+        CheckEqual<PropType?>(null, map.GetPropOrNull(0, 0), "A new map has no props.");
 
-        Actor player = map.AddActor(TestActors.Create(1, 4, 4, 10));
+        map.SetFloor(5, 4, dirt);
+        map.SetProp(5, 4, wall);
+        CheckEqual(dirt, map.GetFloor(5, 4), "A floor can be replaced.");
+        CheckEqual<PropType?>(wall, map.GetPropOrNull(5, 4), "A prop can be placed.");
+        Check(map.IsWalkable(4, 4) && !map.IsWalkable(5, 4), "A blocking prop blocks its tile.");
+
+        map.SetProp(6, 4, gate);
+        map.SetFloor(7, 4, water);
+        Check(map.IsWalkable(6, 4), "A walkable prop does not block its tile.");
+        Check(!map.IsWalkable(7, 4), "A floor that cannot be walked on blocks its tile without a prop.");
+        map.SetProp(7, 4, gate);
+        Check(!map.IsWalkable(7, 4), "A walkable prop does not make a blocking floor walkable.");
+
+        map.SetProp(6, 4, wall);
+        CheckEqual<PropType?>(wall, map.GetPropOrNull(6, 4), "Setting a prop replaces the old one.");
+        CheckEqual(FloorType.GROUND, map.GetFloor(6, 4), "Replacing a prop leaves the floor as it is.");
+        Check(!map.IsWalkable(6, 4), "A replaced prop decides whether the tile blocks.");
+
+        Check(!map.IsWalkable(-1, 0) && !map.IsWalkable(0, MAP_HEIGHT), "Outside the map is never walkable.");
+        CheckThrows<ArgumentOutOfRangeException>(() => map.GetFloor(MAP_WIDTH, 0), "Reading a floor outside the map is rejected.");
+        CheckThrows<ArgumentOutOfRangeException>(() => map.SetFloor(0, -1, dirt), "Writing a floor outside the map is rejected.");
+        CheckThrows<ArgumentNullException>(() => map.SetFloor(0, 0, null!), "A null floor type is rejected.");
+        CheckThrows<ArgumentOutOfRangeException>(() => map.GetPropOrNull(MAP_WIDTH, 0), "Reading a prop outside the map is rejected.");
+        CheckThrows<ArgumentOutOfRangeException>(() => map.SetProp(0, -1, wall), "Writing a prop outside the map is rejected.");
+        CheckThrows<ArgumentNullException>(() => map.SetProp(0, 0, null!), "A null prop type is rejected.");
+        CheckThrows<ArgumentException>(() => map.AddEntity(TestActors.Create(9, 5, 4, 10)), "Actors cannot be placed on a blocked tile.");
+        CheckThrows<ArgumentException>(() => map.AddEntity(TestActors.Create(9, 7, 4, 10)), "Actors cannot be placed on a blocking floor.");
+        CheckThrows<ArgumentException>(() => map.AddEntity(new Thing(101, TestItems.GOLD, 5, 4, 1)), "Items cannot be placed on a blocked tile.");
+
+        Actor player = map.AddEntity(TestActors.Create(1, 4, 4, 10));
         GameRunner runner = new GameRunner(world, player);
         ActionResult result = runner.SubmitPlayerAction(MoveAction.RIGHT);
-        CheckEqual(EActionStatus.Rejected, result.Status, "Moving into a blocked tile is rejected.");
+        CheckEqual(false, result.IsExecuted, "Moving into a blocked tile is rejected.");
         CheckEqual(4, player.X, "A blocked move does not change the position.");
         CheckEqual(10L, world.Tick, "A blocked move spends no time.");
 
         Map npcMap = new Map(MAP_WIDTH, MAP_HEIGHT);
-        npcMap.SetTile(5, 8, wall);
-        Actor npcPlayer = npcMap.AddActor(TestActors.Create(1, 3, 4, 10));
-        Actor npc = npcMap.AddActor(TestActors.Create(2, 4, 8, 10, new NpcController()));
+        npcMap.SetProp(5, 8, wall);
+        Actor npcPlayer = npcMap.AddEntity(TestActors.Create(1, 3, 4, 10));
+        Actor npc = npcMap.AddEntity(TestActors.Create(2, 4, 8, 10, new PacingController()));
         GameRunner npcRunner = new GameRunner(new World(npcMap), npcPlayer);
         npcRunner.SubmitPlayerAction(WaitAction.DEFAULT);
         CheckEqual(3, npc.X, "An NPC turns around at a blocked tile.");
@@ -442,26 +470,26 @@ public static partial class Program
     {
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
         World world = new World(map);
-        Actor player = map.AddActor(TestActors.Create(1, 5, 5, 10));
-        Actor target = map.AddActor(TestActors.Create(2, 6, 5, 1, new FixedController(WaitAction.DEFAULT)));
-        Actor farTarget = map.AddActor(TestActors.Create(3, 7, 5, 1, new FixedController(WaitAction.DEFAULT)));
-        Actor diagonalTarget = map.AddActor(TestActors.Create(4, 6, 6, 1, new FixedController(WaitAction.DEFAULT)));
+        Actor player = map.AddEntity(TestActors.Create(1, 5, 5, 10));
+        Actor target = map.AddEntity(TestActors.Create(2, 6, 5, 1, new FixedController(WaitAction.DEFAULT)));
+        Actor farTarget = map.AddEntity(TestActors.Create(3, 7, 5, 1, new FixedController(WaitAction.DEFAULT)));
+        Actor diagonalTarget = map.AddEntity(TestActors.Create(4, 6, 6, 1, new FixedController(WaitAction.DEFAULT)));
         EventRecorder recorder = new EventRecorder();
         world.Events.Register<ActorAttacked, ActorDied>(recorder);
         GameRunner runner = new GameRunner(world, player);
         long startTick = world.Tick;
 
-        CheckEqual(EActionStatus.Rejected, runner.SubmitPlayerAction(new AttackAction(farTarget)).Status,
+        CheckEqual(false, runner.SubmitPlayerAction(new AttackAction(farTarget)).IsExecuted,
             "A target two tiles away is out of reach.");
-        CheckEqual(EActionStatus.Rejected, runner.SubmitPlayerAction(new AttackAction(diagonalTarget)).Status,
+        CheckEqual(false, runner.SubmitPlayerAction(new AttackAction(diagonalTarget)).IsExecuted,
             "A diagonal target is out of reach.");
-        CheckEqual(EActionStatus.Rejected, runner.SubmitPlayerAction(new AttackAction(player)).Status,
+        CheckEqual(false, runner.SubmitPlayerAction(new AttackAction(player)).IsExecuted,
             "An actor cannot attack itself.");
         CheckEqual(startTick, world.Tick, "Rejected attacks spend no time.");
         CheckEqual(0, recorder.Log.Count, "Rejected attacks raise no events.");
 
         ActionResult result = runner.SubmitPlayerAction(new AttackAction(target));
-        CheckEqual(EActionStatus.Executed, result.Status, "An adjacent target can be attacked.");
+        CheckEqual(true, result.IsExecuted, "An adjacent target can be attacked.");
         CheckEqual(TestActors.MAX_HP - TestActors.ATTACK_POWER, target.Hp, "Damage equals the attacker's attack power.");
         CheckEqual(startTick + 10, world.Tick, "An attack spends the default cost.");
 
@@ -473,7 +501,7 @@ public static partial class Program
         Check(!target.IsAlive, "The target dies at zero HP.");
         CheckEqual("attack 1>2 3,attack 1>2 3,attack 1>2 3,attack 1>2 3,died 2", string.Join(",", recorder.Log),
             "Each hit raises an attack event, and the kill is followed by a death event.");
-        CheckEqual(EActionStatus.Rejected, runner.SubmitPlayerAction(new AttackAction(target)).Status,
+        CheckEqual(false, runner.SubmitPlayerAction(new AttackAction(target)).IsExecuted,
             "A dead target cannot be attacked.");
     }
 
@@ -481,17 +509,17 @@ public static partial class Program
     {
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
         World world = new World(map);
-        Actor player = map.AddActor(TestActors.Create(1, 5, 5, 10));
-        Actor npc = map.AddActor(TestActors.Create(2, 6, 5, 1, new FixedController(WaitAction.DEFAULT)));
+        Actor player = map.AddEntity(TestActors.Create(1, 5, 5, 10));
+        Actor npc = map.AddEntity(TestActors.Create(2, 6, 5, 1, new FixedController(WaitAction.DEFAULT)));
         GameRunner runner = new GameRunner(world, player);
         long startTick = world.Tick;
 
-        CheckThrows<ArgumentException>(() => map.AddActor(TestActors.Create(3, 6, 5, 10)),
+        CheckThrows<ArgumentException>(() => map.AddEntity(TestActors.Create(3, 6, 5, 10)),
             "Two living actors cannot be placed on the same tile.");
         CheckEqual<Actor?>(npc, map.GetLivingActorAtOrNull(6, 5), "A living actor can be found by its tile.");
         Check(map.IsWalkable(6, 5) && !map.CanEnter(6, 5), "A tile with a living actor is walkable but cannot be entered.");
 
-        CheckEqual(EActionStatus.Rejected, runner.SubmitPlayerAction(MoveAction.RIGHT).Status,
+        CheckEqual(false, runner.SubmitPlayerAction(MoveAction.RIGHT).IsExecuted,
             "Moving into a living actor is rejected.");
         CheckEqual(5, player.X, "A move blocked by an actor does not change the position.");
         CheckEqual(startTick, world.Tick, "A move blocked by an actor spends no time.");
@@ -502,14 +530,14 @@ public static partial class Program
         }
         Check(!npc.IsAlive, "The NPC is dead after four hits.");
         CheckEqual<Actor?>(null, map.GetLivingActorAtOrNull(6, 5), "A dead actor does not occupy its tile.");
-        CheckEqual(EActionStatus.Executed, runner.SubmitPlayerAction(MoveAction.RIGHT).Status,
+        CheckEqual(true, runner.SubmitPlayerAction(MoveAction.RIGHT).IsExecuted,
             "The tile of a dead actor can be entered.");
         CheckEqual(6, player.X, "The player moved onto the dead actor's tile.");
 
         Map chaseMap = new Map(MAP_WIDTH, MAP_HEIGHT);
-        Actor chasePlayer = chaseMap.AddActor(TestActors.Create(1, 5, 5, 10));
-        chaseMap.AddActor(TestActors.Create(2, 7, 6, 1, new FixedController(WaitAction.DEFAULT)));
-        Actor chaser = chaseMap.AddActor(TestActors.Create(3, 8, 6, 10, new Brain(new ChaseBehavior(chasePlayer, 6))));
+        Actor chasePlayer = chaseMap.AddEntity(TestActors.Create(1, 5, 5, 10));
+        chaseMap.AddEntity(TestActors.Create(2, 7, 6, 1, new FixedController(WaitAction.DEFAULT)));
+        Actor chaser = chaseMap.AddEntity(TestActors.Create(3, 8, 6, 10, new Brain(new ChaseBehavior(chasePlayer, 6))));
         GameRunner chaseRunner = new GameRunner(new World(chaseMap), chasePlayer);
         chaseRunner.SubmitPlayerAction(WaitAction.DEFAULT);
         CheckEqual("8,5", $"{chaser.X},{chaser.Y}", "A chaser steps around an actor that blocks the closest tile.");
@@ -517,7 +545,7 @@ public static partial class Program
 
     private static void CheckPathFinder()
     {
-        TileType wall = new TileType("Wall", false);
+        PropType wall = new PropType("Wall", false);
         PathFinder pathFinder = new PathFinder();
         List<(int X, int Y)> path = new List<(int X, int Y)>();
 
@@ -533,15 +561,15 @@ public static partial class Program
         Map wallMap = new Map(MAP_WIDTH, MAP_HEIGHT);
         for (int y = 3; y <= 7; y++)
         {
-            wallMap.SetTile(4, y, wall);
+            wallMap.SetProp(4, y, wall);
         }
         Check(pathFinder.TryFindPath(wallMap, 2, 5, 6, 5, path), "A path is found around a wall.");
         CheckEqual(10, path.Count, "The path around the wall is the shortest detour.");
         Check(IsConnectedPath(wallMap, 2, 5, path), "Every step is one orthogonal move onto a walkable tile.");
 
         Map actorMap = new Map(MAP_WIDTH, MAP_HEIGHT);
-        actorMap.AddActor(TestActors.Create(1, 4, 5, 10));
-        actorMap.AddActor(TestActors.Create(2, 8, 5, 10));
+        actorMap.AddEntity(TestActors.Create(1, 4, 5, 10));
+        actorMap.AddEntity(TestActors.Create(2, 8, 5, 10));
         Check(pathFinder.TryFindPath(actorMap, 2, 5, 6, 5, path), "A path is found around an actor.");
         CheckEqual(6, path.Count, "Stepping around an actor costs two extra steps.");
         Check(!path.Contains((4, 5)), "The path does not pass through a living actor.");
@@ -549,7 +577,7 @@ public static partial class Program
         CheckEqual((8, 5), path[path.Count - 1], "An actor on the goal tile is allowed as the last step.");
 
         Map treeMap = new Map(MAP_WIDTH, MAP_HEIGHT);
-        treeMap.SetTile(10, 5, wall);
+        treeMap.SetProp(10, 5, wall);
         Check(pathFinder.TryFindPath(treeMap, 2, 5, 10, 5, path), "A path is found toward a blocked goal.");
         CheckEqual((9, 5), path[path.Count - 1], "The path stops at the reachable tile closest to a blocked goal.");
         CheckEqual(7, path.Count, "Among the closest tiles, the one with the shortest path is chosen.");
@@ -587,9 +615,9 @@ public static partial class Program
     private static void CheckDeadActorsTakeNoTurns()
     {
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
-        Actor player = map.AddActor(TestActors.Create(1, 5, 5, 10));
+        Actor player = map.AddEntity(TestActors.Create(1, 5, 5, 10));
         FixedController controller = new FixedController(WaitAction.DEFAULT);
-        Actor npc = map.AddActor(TestActors.Create(2, 6, 5, 10, controller));
+        Actor npc = map.AddEntity(TestActors.Create(2, 6, 5, 10, controller));
         GameRunner runner = new GameRunner(new World(map), player);
 
         for (int index = 0; index < 4; index++)
@@ -610,11 +638,11 @@ public static partial class Program
     {
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
         World world = new World(map);
-        Actor player = map.AddActor(TestActors.Create(1, 5, 5, 10));
+        Actor player = map.AddEntity(TestActors.Create(1, 5, 5, 10));
         AttackBehavior attack = new AttackBehavior(player);
         ChaseBehavior chase = new ChaseBehavior(player, 6);
         Brain brain = new Brain(attack, chase);
-        Actor monster = map.AddActor(TestActors.Create(2, 9, 5, 10, brain));
+        Actor monster = map.AddEntity(TestActors.Create(2, 9, 5, 10, brain));
         EventRecorder recorder = new EventRecorder();
         world.Events.Register<ActorAttacked, ActorDied>(recorder);
         GameRunner runner = new GameRunner(world, player);
@@ -639,7 +667,7 @@ public static partial class Program
 
         long tick = world.Tick;
         long monsterActions = monster.ActionCount;
-        CheckEqual(EActionStatus.Rejected, runner.SubmitPlayerAction(WaitAction.DEFAULT).Status,
+        CheckEqual(false, runner.SubmitPlayerAction(WaitAction.DEFAULT).IsExecuted,
             "Player actions are rejected after game over.");
         CheckEqual(tick, world.Tick, "Time stops after game over.");
         CheckEqual(monsterActions, monster.ActionCount, "NPCs stop acting after game over.");
@@ -647,21 +675,21 @@ public static partial class Program
 
     private static void CheckChaseBehavior()
     {
-        TileType wall = new TileType("Wall", false);
+        PropType wall = new PropType("Wall", false);
 
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
-        Actor player = map.AddActor(TestActors.Create(1, 2, 5, 10));
+        Actor player = map.AddEntity(TestActors.Create(1, 2, 5, 10));
         Brain brain = new Brain(new ChaseBehavior(player, 3));
-        Actor monster = map.AddActor(TestActors.Create(2, 8, 5, 10, brain));
+        Actor monster = map.AddEntity(TestActors.Create(2, 8, 5, 10, brain));
         GameRunner runner = new GameRunner(new World(map), player);
         runner.SubmitPlayerAction(WaitAction.DEFAULT);
         CheckEqual(8, monster.X, "A monster does not chase a player outside its sense range.");
         CheckEqual<IBehavior?>(null, brain.CurrentBehaviorOrNull, "Chase does not run outside the sense range.");
 
         Map blockedMap = new Map(MAP_WIDTH, MAP_HEIGHT);
-        blockedMap.SetTile(6, 5, wall);
-        Actor blockedPlayer = blockedMap.AddActor(TestActors.Create(1, 5, 5, 10));
-        Actor blockedMonster = blockedMap.AddActor(TestActors.Create(2, 7, 5, 10, new Brain(new ChaseBehavior(blockedPlayer, 5))));
+        blockedMap.SetProp(6, 5, wall);
+        Actor blockedPlayer = blockedMap.AddEntity(TestActors.Create(1, 5, 5, 10));
+        Actor blockedMonster = blockedMap.AddEntity(TestActors.Create(2, 7, 5, 10, new Brain(new ChaseBehavior(blockedPlayer, 5))));
         GameRunner blockedRunner = new GameRunner(new World(blockedMap), blockedPlayer);
         blockedRunner.SubmitPlayerAction(WaitAction.DEFAULT);
         CheckEqual("7,5", $"{blockedMonster.X},{blockedMonster.Y}", "A monster waits when every closer tile is blocked.");
@@ -672,52 +700,70 @@ public static partial class Program
     {
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
         World world = new World(map);
-        Actor player = map.AddActor(TestActors.Create(1, 5, 5, 10));
-        Actor monster = map.AddActor(TestActors.Create(2, 5, 6, 10, new Brain(new AttackBehavior(player))));
-        Item potion = map.AddItem(new Item(EItemType.Potion, 5, 5, 5));
-        map.AddItem(new Item(EItemType.Gold, 6, 5, 7));
+        Actor player = map.AddEntity(TestActors.Create(1, 5, 5, 10));
+        Actor monster = map.AddEntity(TestActors.Create(2, 5, 6, 10, new Brain(new AttackBehavior(player))));
+        Thing potion = map.AddEntity(new Thing(102, TestItems.POTION, 5, 5, 1));
+        map.AddEntity(new Thing(103, TestItems.GOLD, 6, 5, 7));
         EventRecorder recorder = new EventRecorder();
         world.Events.Register<ItemPickedUp>(recorder);
         GameRunner runner = new GameRunner(world, player);
 
-        CheckEqual<Item?>(potion, map.GetItemAtOrNull(5, 5), "An item can be found by its tile.");
-        CheckEqual<Item?>(null, map.GetItemAtOrNull(4, 5), "An empty tile has no item.");
-        CheckThrows<ArgumentException>(() => map.AddItem(new Item(EItemType.Gold, 5, 5, 1)), "A tile holds only one item.");
-        CheckThrows<ArgumentException>(() => map.AddItem(new Item(EItemType.Gold, -1, 5, 1)), "Items must be inside the map.");
-        CheckThrows<ArgumentOutOfRangeException>(() => new Item(EItemType.Gold, 0, 0, 0), "An item amount must be positive.");
+        CheckEqual<Thing?>(potion, map.GetItemAtOrNull(5, 5), "An item can be found by its tile.");
+        CheckEqual<Thing?>(null, map.GetItemAtOrNull(4, 5), "An empty tile has no item.");
+        CheckThrows<ArgumentException>(() => map.AddEntity(new Thing(104, TestItems.GOLD, 5, 5, 1)), "A tile holds only one item.");
+        CheckThrows<ArgumentException>(() => map.AddEntity(new Thing(105, TestItems.GOLD, -1, 5, 1)), "Items must be inside the map.");
+        CheckThrows<ArgumentOutOfRangeException>(() => new Thing(106, TestItems.GOLD, 0, 0, 0), "A thing count must be positive.");
 
         runner.SubmitPlayerAction(WaitAction.DEFAULT);
         runner.SubmitPlayerAction(WaitAction.DEFAULT);
         CheckEqual(4, player.Hp, "The player took two hits.");
         ActionResult result = runner.SubmitPlayerAction(PickUpAction.DEFAULT);
-        CheckEqual(EActionStatus.Executed, result.Status, "An item on the actor's tile can be picked up.");
-        CheckEqual(4 + 5 - 3, player.Hp, "A potion heals by its amount.");
-        CheckEqual(1, map.Items.Count, "A picked-up item leaves the map.");
-        CheckEqual(EActionStatus.Rejected, runner.SubmitPlayerAction(PickUpAction.DEFAULT).Status,
+        CheckEqual(true, result.IsExecuted, "An item on the actor's tile can be picked up.");
+        CheckEqual(4 + TestItems.POTION_HEAL - 3, player.Hp, "A potion heals by its type's amount.");
+        CheckEqual(1, map.Things.Count, "A picked-up item leaves the map.");
+        CheckEqual(false, runner.SubmitPlayerAction(PickUpAction.DEFAULT).IsExecuted,
             "Picking up on an empty tile is rejected.");
 
         runner.SubmitPlayerAction(MoveAction.RIGHT);
         runner.SubmitPlayerAction(PickUpAction.DEFAULT);
-        CheckEqual(7, player.Gold, "Gold is added by its amount.");
+        CheckEqual(7, player.Gold, "Gold is added by its count.");
         CheckEqual("pickup 1 Potion 5,pickup 1 Gold 7", string.Join(",", recorder.Log), "Each pickup raises an event.");
         Check(monster.IsAlive, "The monster is untouched.");
 
         Map fullMap = new Map(MAP_WIDTH, MAP_HEIGHT);
-        Actor fullPlayer = fullMap.AddActor(TestActors.Create(1, 5, 5, 10));
-        fullMap.AddItem(new Item(EItemType.Potion, 5, 5, 5));
+        Actor fullPlayer = fullMap.AddEntity(TestActors.Create(1, 5, 5, 10));
+        fullMap.AddEntity(new Thing(107, TestItems.POTION, 5, 5, 1));
         GameRunner fullRunner = new GameRunner(new World(fullMap), fullPlayer);
         fullRunner.SubmitPlayerAction(PickUpAction.DEFAULT);
         CheckEqual(TestActors.MAX_HP, fullPlayer.Hp, "Healing does not exceed max HP.");
+
+        ThingType pouch = new ThingType("Pouch", new ItemPart(EItemEffect.Gold, 10));
+        ThingType bundle = new ThingType("Bundle", new ItemPart(EItemEffect.None, 2));
+        Map stackMap = new Map(MAP_WIDTH, MAP_HEIGHT);
+        Actor stackPlayer = stackMap.AddEntity(TestActors.Create(1, 5, 5, 10));
+        stackMap.AddEntity(new Thing(108, pouch, 5, 5, 3));
+        stackMap.AddEntity(new Thing(109, bundle, 6, 5, 3));
+        GameRunner stackRunner = new GameRunner(new World(stackMap), stackPlayer);
+        stackRunner.SubmitPlayerAction(PickUpAction.DEFAULT);
+        CheckEqual(30, stackPlayer.Gold, "Gold is added by the item's total amount.");
+        stackRunner.SubmitPlayerAction(MoveAction.RIGHT);
+        stackRunner.SubmitPlayerAction(PickUpAction.DEFAULT);
+        CheckEqual(6, stackPlayer.Inventory.GetCount(bundle), "A material enters the inventory by the item's total amount.");
+        CheckEqual(0, stackPlayer.Inventory.GetCount(TestItems.BRANCH), "Item types are told apart by reference.");
     }
 
     private static void CheckTypeValidation()
     {
-        CheckThrows<ArgumentException>(() => new TileType("", true), "A tile type needs a name.");
+        CheckThrows<ArgumentException>(() => new FloorType("", true), "A floor type needs a name.");
+        CheckThrows<ArgumentException>(() => new PropType("", false), "A prop type needs a name.");
         CheckThrows<ArgumentException>(() => new ActorType("", 1, 1, 1), "An actor type needs a name.");
         CheckThrows<ArgumentOutOfRangeException>(() => new ActorType("A", 0, 1, 1), "Max HP must be positive.");
         CheckThrows<ArgumentOutOfRangeException>(() => new ActorType("A", 1, -1, 1), "Attack power must not be negative.");
         CheckThrows<ArgumentOutOfRangeException>(() => new ActorType("A", 1, 1, 0), "Speed must be positive.");
         CheckThrows<ArgumentNullException>(() => new Actor(1, null!, 0, 0), "An actor needs a type.");
+        CheckThrows<ArgumentException>(() => new ThingType(""), "A thing type needs a name.");
+        CheckThrows<ArgumentOutOfRangeException>(() => new ItemPart(EItemEffect.Heal, 0), "An item amount must be positive.");
+        CheckThrows<ArgumentNullException>(() => new Thing(1, null!, 0, 0, 1), "A thing needs a type.");
         CheckThrows<ArgumentNullException>(() => new AttackAction(null!), "An attack needs a target.");
         CheckThrows<ArgumentNullException>(() => new AttackBehavior(null!), "Attack behavior needs a target.");
         CheckThrows<ArgumentNullException>(() => new ChaseBehavior(null!, 3), "Chase needs a target.");
@@ -761,12 +807,12 @@ public static partial class Program
     private static void CheckDebugInfo()
     {
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
-        Actor player = map.AddActor(TestActors.Create(1, 3, 4, 10));
+        Actor player = map.AddEntity(TestActors.Create(1, 3, 4, 10));
         FleeBehavior flee = new FleeBehavior(player, 4);
         ChaseBehavior chase = new ChaseBehavior(player, 6);
         AttackBehavior attack = new AttackBehavior(player);
         Brain brain = new Brain(attack, flee, chase);
-        map.AddActor(TestActors.Create(2, 3, 6, 10, brain));
+        map.AddEntity(TestActors.Create(2, 3, 6, 10, brain));
         GameRunner runner = new GameRunner(new World(map), player);
 
         CheckEqual(3, brain.Behaviors.Count, "A brain exposes all of its behaviors.");

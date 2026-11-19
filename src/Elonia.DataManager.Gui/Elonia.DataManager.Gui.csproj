@@ -1,18 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
+    <OutputType>Exe</OutputType>
     <AssemblyName>elonia-data-gui</AssemblyName>
     <RootNamespace>Elonia.DataManager.Gui</RootNamespace>
-    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Desktop/node_modules/**;Desktop/dist/**;Desktop/src-tauri/target/**;Desktop/src-tauri/binaries/**;Desktop/src-tauri/gen/**</DefaultItemExcludes>
   </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="../Elonia.DataManager/Elonia.DataManager.csproj" />
-    <PackageReference Include="Avalonia" Version="11.3.23" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.3.23" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.23" />
-    <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.3.13" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="../Elonia.DataManager.Cli/ToolOptions.cs" Link="ToolOptions.cs" />
-  </ItemGroup>
 </Project>

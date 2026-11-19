@@ -3,12 +3,17 @@ namespace Elonia.Simulation
     public readonly struct ItemPickedUp
     {
         public Actor Actor { get; }
-        public Item Item { get; }
+        public Thing Thing { get; }
 
-        public ItemPickedUp(Actor actor, Item item)
+        public EItemEffect Effect { get; }
+        public int Amount { get; }
+
+        public ItemPickedUp(Actor actor, Thing thing, EItemEffect effect, int amount)
         {
             Actor = actor;
-            Item = item;
+            Thing = thing;
+            Effect = effect;
+            Amount = amount;
         }
     }
 }

@@ -4,15 +4,13 @@ namespace Elonia.Simulation
 {
     public readonly struct ActionResult
     {
-        public static readonly ActionResult REJECTED = new ActionResult(EActionStatus.Rejected, 0);
+        public static readonly ActionResult REJECTED = new ActionResult(0);
 
-        public EActionStatus Status { get; }
         public int Cost { get; }
-        public bool IsExecuted => Status == EActionStatus.Executed;
+        public bool IsExecuted => Cost > 0;
 
-        private ActionResult(EActionStatus status, int cost)
+        private ActionResult(int cost)
         {
-            Status = status;
             Cost = cost;
         }
 
@@ -23,7 +21,7 @@ namespace Elonia.Simulation
                 throw new ArgumentOutOfRangeException(nameof(cost), "An executed action must consume a positive cost.");
             }
 
-            return new ActionResult(EActionStatus.Executed, cost);
+            return new ActionResult(cost);
         }
     }
 }

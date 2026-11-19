@@ -164,10 +164,14 @@ internal sealed partial class Debugger
         drawList.AddRect(topLeft, topLeft + new Vector2(GameView.TILE_SIZE, GameView.TILE_SIZE), HOVER_COLOR);
 
         Map map = _session.Map;
-        TileType tile = map.GetTile(tileX, tileY);
+        Cell cell = map.GetCell(tileX, tileY);
         ImGui.BeginTooltip();
-        ImGui.TextUnformatted(ZString.Format("칸 ({0}, {1})", tileX, tileY));
-        ImGui.TextUnformatted(ZString.Concat(DebugNames.GetTileName(tile), tile.IsWalkable ? " (걸을 수 있음)" : " (막힘)"));
+        ImGui.TextUnformatted(ZString.Format("칸 ({0}, {1}){2}", tileX, tileY, cell.IsWalkable ? " 걸을 수 있음" : " 막힘"));
+        ImGui.TextUnformatted(ZString.Concat("바닥: ", DebugNames.GetFloorName(cell.Floor)));
+        if (cell.PropOrNull != null)
+        {
+            ImGui.TextUnformatted(ZString.Concat("물체: ", DebugNames.GetPropName(cell.PropOrNull)));
+        }
 
         IReadOnlyList<Actor> actors = map.Actors;
         for (int index = 0; index < actors.Count; index++)
@@ -179,10 +183,11 @@ internal sealed partial class Debugger
             }
         }
 
-        Item? itemOrNull = map.GetItemAtOrNull(tileX, tileY);
-        if (itemOrNull != null)
+        IReadOnlyList<Thing> things = cell.Things;
+        for (int index = 0; index < things.Count; index++)
         {
-            ImGui.TextUnformatted(ZString.Format("아이템: {0} {1}", DebugNames.GetItemName(itemOrNull), itemOrNull.Amount));
+            Thing thing = things[index];
+            ImGui.TextUnformatted(ZString.Format("물건: {0} x{1}", DebugNames.GetThingName(thing), thing.Count));
         }
 
         ImGui.EndTooltip();

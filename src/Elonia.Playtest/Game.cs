@@ -22,17 +22,17 @@ internal sealed class Game
 
     public bool IsDebuggerOpen => _debugger.IsOpen;
 
-    public Game(SpriteAtlas atlas, UiFont font, int seed, int screenWidth, int screenHeight, bool bDebuggerOpen)
+    public Game(GameContent content, SpriteAtlas atlas, UiFont font, int seed, int screenWidth, int screenHeight, bool bDebuggerOpen)
     {
         _atlas = atlas;
         _font = font;
         _screenWidth = screenWidth;
         _screenHeight = screenHeight;
-        _session = TownMap.Create(new Random(seed));
+        _session = TownMap.Create(content, new Random(seed));
         _view = new GameView(atlas, font, _session, screenWidth, screenHeight);
         _debugger = new Debugger(_session, _view, seed, screenWidth, screenHeight, bDebuggerOpen);
         _log = new MessageLog(_session.Player);
-        _session.World.Events.Register<ActorAttacked, ActorDied, ItemPickedUp, TileHarvested>(_log);
+        _session.World.Events.Register<ActorAttacked, ActorDied, ItemPickedUp, PropHarvested, StepTriggered, ActorDamaged>(_log);
         _log.Add("마을의 조용한 하루. 동쪽 들판에서 무언가 꿈틀거린다.", MessageLog.MUTED);
     }
 
@@ -287,7 +287,7 @@ internal sealed class Game
     private string? GetPromptOrNull()
     {
         Actor player = _session.Player;
-        Item? itemOrNull = _session.Map.GetItemAtOrNull(player.X, player.Y);
+        Thing? itemOrNull = _session.Map.GetItemAtOrNull(player.X, player.Y);
         if (itemOrNull != null)
         {
             return ZString.Concat("E  ", GameText.GetPickUpLabel(itemOrNull.Type));

@@ -13,19 +13,15 @@ namespace Elonia.Data
         public string Id { get; }
 
         [MemoryPackOrder(1)]
-        public string Name { get; }
-
-        [MemoryPackOrder(2)]
         public EItemEffect Effect { get; }
 
-        [MemoryPackOrder(3)]
+        [MemoryPackOrder(2)]
         public int Amount { get; }
 
         [MemoryPackConstructor]
-        public ItemRow(string id, string name, EItemEffect effect, int amount)
+        public ItemRow(string id, EItemEffect effect, int amount)
         {
             Id = id;
-            Name = name;
             Effect = effect;
             Amount = amount;
         }

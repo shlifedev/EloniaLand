@@ -4,6 +4,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Elonia.Playtest.Checks" />
+    <ProjectReference Include="../Elonia.Data/Elonia.Data.csproj" />
     <ProjectReference Include="../Elonia.Simulation/Elonia.Simulation.csproj" />
     <ProjectReference Include="../Elonia.Events/Elonia.Events.csproj" />
     <PackageReference Include="Raylib-cs" Version="8.1.0" />

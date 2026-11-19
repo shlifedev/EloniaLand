@@ -1,3 +1,5 @@
+using System;
+
 namespace Elonia.Simulation
 {
     public sealed class PickUpAction : ActorAction
@@ -11,27 +13,31 @@ namespace Elonia.Simulation
         public override ActionResult Execute(ActionContext context)
         {
             Actor actor = context.Actor;
-            Item? itemOrNull = context.Map.GetItemAtOrNull(actor.X, actor.Y);
-            if (itemOrNull == null)
+            Thing? thingOrNull = context.Map.GetItemAtOrNull(actor.X, actor.Y);
+            ItemPart? itemOrNull = thingOrNull?.Type.GetPartOrNull<ItemPart>();
+            if (thingOrNull == null || itemOrNull == null)
             {
                 return ActionResult.REJECTED;
             }
 
-            switch (itemOrNull.Type)
+            int amount = itemOrNull.Amount * thingOrNull.Count;
+            switch (itemOrNull.Effect)
             {
-                case EItemType.Potion:
-                    actor.Heal(itemOrNull.Amount);
+                case EItemEffect.Heal:
+                    actor.Heal(amount);
                     break;
-                case EItemType.Gold:
-                    actor.AddGold(itemOrNull.Amount);
+                case EItemEffect.Gold:
+                    actor.AddGold(amount);
+                    break;
+                case EItemEffect.None:
+                    actor.Inventory.Add(thingOrNull.Type, amount);
                     break;
                 default:
-                    actor.Inventory.Add(itemOrNull.Type, itemOrNull.Amount);
-                    break;
+                    throw new InvalidOperationException($"Unknown item effect {itemOrNull.Effect}.");
             }
 
-            context.Map.RemoveItem(itemOrNull);
-            context.World.Events.Broadcast(new ItemPickedUp(actor, itemOrNull));
+            context.Map.RemoveThing(thingOrNull);
+            context.World.Events.Broadcast(new ItemPickedUp(actor, thingOrNull, itemOrNull.Effect, amount));
             return ActionResult.Executed(DEFAULT_COST);
         }
     }

@@ -1,5 +1,3 @@
-using System;
-
 namespace Elonia.Simulation
 {
     public sealed class HarvestAction : ActorAction
@@ -23,22 +21,27 @@ namespace Elonia.Simulation
         {
             Actor actor = context.Actor;
             Map map = context.Map;
-            bool bInReach = Math.Abs(actor.X - TargetX) + Math.Abs(actor.Y - TargetY) == REACH;
+            bool bInReach = GridMath.GetManhattanDistance(actor.X, actor.Y, TargetX, TargetY) == REACH;
             if (!bInReach || !map.IsInside(TargetX, TargetY))
             {
                 return ActionResult.REJECTED;
             }
 
-            TileType harvestedTile = map.GetTile(TargetX, TargetY);
-            TileHarvest? harvestOrNull = harvestedTile.HarvestOrNull;
-            if (harvestOrNull == null)
+            PropType? harvestedPropOrNull = map.GetPropOrNull(TargetX, TargetY);
+            PropHarvest? harvestOrNull = harvestedPropOrNull?.HarvestOrNull;
+            if (harvestedPropOrNull == null || harvestOrNull == null)
             {
                 return ActionResult.REJECTED;
             }
 
-            map.SetTile(TargetX, TargetY, harvestOrNull.ResultTile);
-            Item dropped = map.AddItem(new Item(harvestOrNull.DropType, TargetX, TargetY, harvestOrNull.DropAmount));
-            context.World.Events.Broadcast(new TileHarvested(actor, TargetX, TargetY, harvestedTile, dropped));
+            if (map.GetItemAtOrNull(TargetX, TargetY) != null || !map.GetFloor(TargetX, TargetY).IsWalkable)
+            {
+                return ActionResult.REJECTED;
+            }
+
+            map.RemoveProp(TargetX, TargetY);
+            Thing dropped = map.AddEntity(new Thing(map.CreateEntityID(), harvestOrNull.DropType, TargetX, TargetY, harvestOrNull.DropCount));
+            context.World.Events.Broadcast(new PropHarvested(actor, TargetX, TargetY, harvestedPropOrNull, dropped));
             return ActionResult.Executed(COST);
         }
     }

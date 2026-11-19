@@ -1,60 +1,132 @@
 using System;
-using System.Globalization;
-using Avalonia;
-using Elonia.DataManager.Cli;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
 
 namespace Elonia.DataManager.Gui;
 
-public static class Program
+internal static class Program
 {
-    [STAThread]
-    public static int Main(string[] args)
+    private static int Main(string[] args)
     {
-        StartOptions start = new StartOptions();
-        Func<string, string, bool> tryReadExtra = (string name, string value) =>
+        try
         {
-            switch (name)
-            {
-                case "--screenshot":
-                    start.ScreenshotPathOrNull = value;
-                    return true;
-                case "--sheet":
-                    start.SheetNameOrNull = value;
-                    return true;
-                case "--problem":
-                    bool bParsed = int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out int problemNumber);
-                    start.ProblemNumber = problemNumber;
-                    return bParsed;
-                default:
-                    return false;
-            }
-        };
-
-        if (!ToolOptions.TryParse(args, 0, tryReadExtra, out ToolOptions options, out string error)
-            || !options.TryCreateWorkspace(out TableWorkspace? workspaceOrNull, out error))
+            return RunDesktop(args);
+        }
+        catch (Exception exception)
         {
-            Console.Error.WriteLine(error);
-            Console.WriteLine("사용법: elonia-data-gui [옵션]");
-            for (int index = 0; index < ToolOptions.USAGE_LINES.Length; index++)
-            {
-                Console.WriteLine(ToolOptions.USAGE_LINES[index]);
-            }
+            Console.Error.WriteLine(exception.Message);
+            return 1;
+        }
+    }
 
-            return 2;
+    private static int RunDesktop(string[] args)
+    {
+        string? rootOrNull = FindRepositoryOrNull(AppContext.BaseDirectory) ?? FindRepositoryOrNull(Environment.CurrentDirectory);
+        if (rootOrNull == null)
+        {
+            Console.Error.WriteLine("Elonia 저장소에서 실행하세요. Elonia.sln과 Desktop/scripts/launch.mjs를 찾을 수 없습니다.");
+            return 1;
         }
 
-        TableWorkspace workspace = workspaceOrNull!;
-        AppBuilder.Configure(() => new App(workspace, start))
-            .UsePlatformDetect()
-            .StartWithClassicDesktopLifetime(Array.Empty<string>());
-        return 0;
+        ProcessStartInfo start = new ProcessStartInfo(FindNode())
+        {
+            WorkingDirectory = rootOrNull,
+            UseShellExecute = false
+        };
+        start.ArgumentList.Add(Path.Combine(rootOrNull, "src", "Elonia.DataManager.Gui", "Desktop", "scripts", "launch.mjs"));
+        foreach (string argument in args)
+        {
+            start.ArgumentList.Add(argument);
+        }
+
+        using Process launcher = Process.Start(start) ?? throw new IOException("데이터매니저를 시작하지 못했습니다.");
+        void StopLauncher()
+        {
+            try
+            {
+                if (!launcher.HasExited)
+                {
+                    launcher.Kill(true);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+            }
+            catch (Win32Exception exception)
+            {
+                Console.Error.WriteLine(exception.Message);
+            }
+        }
+
+        void CancelFromConsole(object? senderOrNull, ConsoleCancelEventArgs e)
+        {
+            e.Cancel = true;
+            StopLauncher();
+        }
+
+        void StopOnExit(object? senderOrNull, EventArgs e)
+        {
+            StopLauncher();
+        }
+
+        using PosixSignalRegistration? terminationOrNull = OperatingSystem.IsWindows() ? null
+            : PosixSignalRegistration.Create(PosixSignal.SIGTERM, context =>
+            {
+                context.Cancel = true;
+                StopLauncher();
+            });
+        AppDomain.CurrentDomain.ProcessExit += StopOnExit;
+        Console.CancelKeyPress += CancelFromConsole;
+        try
+        {
+            launcher.WaitForExit();
+            return launcher.ExitCode;
+        }
+        finally
+        {
+            Console.CancelKeyPress -= CancelFromConsole;
+            AppDomain.CurrentDomain.ProcessExit -= StopOnExit;
+        }
     }
-}
 
-internal sealed class StartOptions
-{
-    public string? ScreenshotPathOrNull { get; set; }
-    public string? SheetNameOrNull { get; set; }
+    private static string? FindRepositoryOrNull(string start)
+    {
+        for (DirectoryInfo? directoryOrNull = new DirectoryInfo(start); directoryOrNull != null; directoryOrNull = directoryOrNull.Parent)
+        {
+            string root = directoryOrNull.FullName;
+            if (File.Exists(Path.Combine(root, "Elonia.sln"))
+                && File.Exists(Path.Combine(root, "src", "Elonia.DataManager.Gui", "Desktop", "scripts", "launch.mjs")))
+            {
+                return root;
+            }
+        }
+        return null;
+    }
 
-    public int ProblemNumber { get; set; }
+    private static string FindNode()
+    {
+        if (OperatingSystem.IsMacOS())
+        {
+            string path = Environment.GetEnvironmentVariable("PATH") ?? "";
+            foreach (string directory in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+            {
+                string candidate = Path.Combine(directory, "node");
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+            if (File.Exists("/opt/homebrew/bin/node"))
+            {
+                return "/opt/homebrew/bin/node";
+            }
+            if (File.Exists("/usr/local/bin/node"))
+            {
+                return "/usr/local/bin/node";
+            }
+        }
+        return "node";
+    }
 }

@@ -40,21 +40,19 @@ public static partial class Program
         CheckEqual(output.DataFiles.Count - 1, Directory.GetFiles(dataDirectory, "*" + TableManifest.DATA_EXTENSION).Length, "The game data folder holds no stale data files.");
 
         string tablesDirectory = Path.Combine(AppContext.BaseDirectory, "Tables");
-        GameTables tables = GameTables.Load(File.ReadAllText(Path.Combine(tablesDirectory, TableManifest.FILE_NAME)),
+        string manifestText = File.ReadAllText(Path.Combine(tablesDirectory, TableManifest.FILE_NAME));
+        CheckEqual(File.ReadAllText(Path.Combine(dataDirectory, TableManifest.FILE_NAME)), manifestText,
+            "실행 파일 옆의 매니페스트가 현재 게임 표의 파일 해시와 일치한다.");
+        GameTables tables = GameTables.Load(manifestText,
             (string fileName) => File.ReadAllBytes(Path.Combine(tablesDirectory, fileName)));
-        CheckEqual(GameTables.SCHEMA_HASH, TableManifest.Parse(File.ReadAllText(Path.Combine(tablesDirectory, TableManifest.FILE_NAME))).SchemaHash,
-            "The copied data and the compiled code are from the same build.");
 
-        ItemRow potion = tables.Item.Get("potion");
-        Check(potion.Name == "Potion" && potion.Effect == EItemEffect.Heal && potion.Amount == 5, "The potion heals 5.");
-        ActorRow bat = tables.Actor.Get("bat");
-        Check(bat.MaxHp == 3 && bat.Attack == 1 && bat.Speed == 140 && bat.IsHostile && bat.SenseRange == 7, "The bat's numbers are read.");
-        Check(!tables.Actor.Get("villager").IsHostile, "The villager is not hostile.");
-        TileRow tree = tables.Tile.Get("tree");
-        Check(!tree.IsWalkable && tree.DropAmount == 1, "A tree blocks movement and drops one item.");
-        CheckEqual("Grass", tables.Tile.Get(tree.HarvestResult).Name, "A harvested tree turns into grass (a reference to its own table).");
-        CheckEqual("Branch", tables.Item.Get(tree.DropItem).Name, "A harvested tree drops a branch (a reference to another table).");
-        Check(!tables.Tile.Get("grass").HarvestResult.HasValue, "Grass cannot be harvested.");
-        CheckEqual(10, tables.Tile.Count, "All tiles are loaded.");
+        CheckEqual(FindTable(result, TownLegendTable.TABLE_NAME).Rows.Count, tables.TownLegend.Count,
+            "현재 엑셀에 있는 마을 범례를 모두 읽는다.");
+        foreach (TownLegendRow row in tables.TownLegend.Rows)
+        {
+            Check(row.Symbol.Length == 1 && tables.TownLegend.GetBySymbol(row.Symbol) == row,
+                $"마을 범례 {row.Id}를 한 글자 기호로 찾을 수 있다.");
+            Check(tables.Floor.TryGet(row.Floor, out _), $"마을 범례 {row.Id}에 바닥이 있다.");
+        }
     }
 }

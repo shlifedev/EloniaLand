@@ -6,6 +6,13 @@ namespace Elonia.Simulation
 {
     public sealed class InteractionPlan
     {
+        private static readonly IInteractionRule[] RULES = new IInteractionRule[]
+        {
+            new AttackRule(),
+            new HarvestRule(),
+            new PickUpRule()
+        };
+
         private readonly List<Interaction> _items = new List<Interaction>();
 
         public IReadOnlyList<Interaction> Items { get; }
@@ -33,18 +40,9 @@ namespace Elonia.Simulation
                 return;
             }
 
-            Actor? targetOrNull = map.GetLivingActorAtOrNull(x, y);
-            if (targetOrNull != null)
+            for (int index = 0; index < RULES.Length; index++)
             {
-                targetOrNull.AddInteractions(this, actor);
-            }
-
-            map.GetTile(x, y).AddInteractions(this, x, y);
-
-            Item? itemOrNull = map.GetItemAtOrNull(x, y);
-            if (itemOrNull != null)
-            {
-                itemOrNull.AddInteractions(this);
+                RULES[index].Collect(this, map, actor, x, y);
             }
         }
 

@@ -83,8 +83,8 @@ internal static class Hud
         {
             ItemStack stack = stacks[index];
             int rowTop = TOP + TITLE_HEIGHT + index * ROW_HEIGHT;
-            atlas.Draw(Art.GetItemSprite(stack.Type), LEFT + 10, rowTop, 32, WHITE);
-            font.Draw(ZString.Concat(GameText.GetItemName(stack.Type), "  x", stack.Count), LEFT + 52, rowTop, ETextSize.Normal, MessageLog.NORMAL);
+            atlas.Draw(Art.GetThingSprite(stack.Type), LEFT + 10, rowTop, 32, WHITE);
+            font.Draw(ZString.Concat(GameText.GetThingName(stack.Type), "  x", stack.Count), LEFT + 52, rowTop, ETextSize.Normal, MessageLog.NORMAL);
         }
     }
 

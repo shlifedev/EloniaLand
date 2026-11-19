@@ -30,8 +30,11 @@ namespace Elonia.Data
         [MemoryPackOrder(6)]
         public int SenseRange { get; }
 
+        [MemoryPackOrder(7)]
+        public EActorBehavior Behavior { get; }
+
         [MemoryPackConstructor]
-        public ActorRow(string id, string name, int maxHp, int attack, int speed, bool isHostile, int senseRange)
+        public ActorRow(string id, string name, int maxHp, int attack, int speed, bool isHostile, int senseRange, EActorBehavior behavior)
         {
             Id = id;
             Name = name;
@@ -40,6 +43,7 @@ namespace Elonia.Data
             Speed = speed;
             IsHostile = isHostile;
             SenseRange = senseRange;
+            Behavior = behavior;
         }
     }
 }

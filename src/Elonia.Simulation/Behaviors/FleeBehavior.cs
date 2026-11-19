@@ -38,29 +38,7 @@ namespace Elonia.Simulation
 
         public ActorAction ChooseAction(ActionContext context)
         {
-            Actor actor = context.Actor;
-
-            ActorAction bestAction = WaitAction.DEFAULT;
-            long bestDistance = GridMath.GetSquaredDistance(actor.X, actor.Y, _threat.X, _threat.Y);
-            for (int index = 0; index < MoveAction.DIRECTIONS.Count; index++)
-            {
-                MoveAction move = MoveAction.DIRECTIONS[index];
-                int nextX = actor.X + move.DeltaX;
-                int nextY = actor.Y + move.DeltaY;
-                if (!context.Map.CanEnter(nextX, nextY))
-                {
-                    continue;
-                }
-
-                long distance = GridMath.GetSquaredDistance(nextX, nextY, _threat.X, _threat.Y);
-                if (distance > bestDistance)
-                {
-                    bestDistance = distance;
-                    bestAction = move;
-                }
-            }
-
-            return bestAction;
+            return StepChooser.ChooseStepAwayFrom(context, _threat);
         }
     }
 }
