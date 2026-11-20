@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <RootNamespace>HolySheet</RootNamespace>
+    <AssemblyName>HolySheet.Runtime</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(HolySheetRoot)/src/Runtime/**/*.cs" Exclude="$(HolySheetRoot)/src/Runtime/Unity/**" LinkBase="Runtime" />
+  </ItemGroup>
+</Project>
