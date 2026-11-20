@@ -1,0 +1,26 @@
+{
+  "sources": [
+    {
+      "type": "xlsx",
+      "path": "data/Sheets"
+    }
+  ],
+  "output": {
+    "code": "unity/packages/com.shlifedev.elonia.data/Runtime/Generated",
+    "data": "unity/game/Assets/StreamingAssets/Tables",
+    "schema": false
+  },
+  "codegen": {
+    "namespace": "Elonia.Data",
+    "tablesClass": "GameTables",
+    "serializer": "memorypack"
+  },
+  "sheet": {
+    "header": [
+      "type",
+      "name",
+      "comment"
+    ],
+    "arraySeparator": "|"
+  }
+}

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework></TargetFramework>
+    <TargetFrameworks>netstandard2.1;net8.0</TargetFrameworks>
+    <LangVersion Condition="'$(TargetFramework)' == 'netstandard2.1'">9.0</LangVersion>
+    <LangVersion Condition="'$(TargetFramework)' == 'net8.0'">12.0</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../HolySheet.Runtime/HolySheet.Runtime.csproj" />
+    <PackageReference Include="MemoryPack" Version="1.22.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../../unity/game/Assets/StreamingAssets/Tables/**" Exclude="../../unity/game/Assets/StreamingAssets/Tables/**/*.meta" Link="Tables/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../unity/packages/com.shlifedev.elonia.data/Runtime/**/*.cs" LinkBase="Runtime" />
+  </ItemGroup>
+</Project>

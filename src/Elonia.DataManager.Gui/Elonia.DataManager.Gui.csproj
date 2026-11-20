@@ -1,8 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <AssemblyName>elonia-data-gui</AssemblyName>
-    <RootNamespace>Elonia.DataManager.Gui</RootNamespace>
-    <DefaultItemExcludes>$(DefaultItemExcludes);Desktop/node_modules/**;Desktop/dist/**;Desktop/src-tauri/target/**;Desktop/src-tauri/binaries/**;Desktop/src-tauri/gen/**</DefaultItemExcludes>
-  </PropertyGroup>
-</Project>
