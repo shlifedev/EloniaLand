@@ -9,13 +9,15 @@ namespace Elonia.Checks;
 
 internal static partial class Program
 {
+    private static int _checkCount;
+
     public static void Main()
     {
         string directory = Path.Combine(AppContext.BaseDirectory, "Tables");
         GameTables tables = GameTables.Load(directory);
         GameContent original = new GameContent(tables);
         GameSession town = TownMap.Create(original, new Random(1));
-        Check(town.Map.Actors[0] == town.Player && town.Player.Type == original.GetActor("hero"), "마을에서 플레이어가 먼저 생성된다.");
+        Check(town.Map.Actors[0] == town.Player && town.Player.Def == original.Tables.Actor.Get("hero"), "마을에서 플레이어가 먼저 생성된다.");
         CheckThingsAfterActors(town);
         CheckHarvestAndDoor(original, tables);
         CheckHouseLegend(original, tables);
@@ -26,7 +28,15 @@ internal static partial class Program
         CheckSwappedItems(original, edited, town);
         CheckPotionAction(edited, tables, healing);
         CheckPlaySession(original, tables);
-        Console.WriteLine("게임 검사 통과");
+        MeasureRuleActionAllocations(original, tables);
+        CheckCombat(original);
+        CheckBehaviors(original);
+        CheckItems(original, edited);
+        CheckHarvest(original);
+        CheckStepTriggers(original);
+        CheckRuleInteractions(original);
+        CheckRuleValidation(original);
+        Console.WriteLine($"게임 검사 {_checkCount}개 통과");
     }
 
     private static void CheckThingsAfterActors(GameSession town)
@@ -48,17 +58,17 @@ internal static partial class Program
         string row = ZString.Concat(tables.TownLegend.Get("hero").Symbol, tables.TownLegend.Get("door").Symbol,
             tables.TownLegend.Get("tree").Symbol);
         GameSession session = TownMap.Create(content, new Random(1), new string[] { row });
-        Check(session.Map.GetFloor(1, 0) == content.GetFloor("wood_floor") && session.Map.GetPropOrNull(1, 0) == content.GetProp("door"),
+        Check(session.Map.GetFloor(1, 0) == content.Tables.Floor.Get("wood_floor") && session.Map.GetPropOrNull(1, 0) == content.Tables.Prop.Get("door"),
             "나무 바닥 위에 문이 놓인다.");
         Check(session.Runner.SubmitPlayerAction(MoveAction.RIGHT).IsExecuted, "문을 통과할 수 있다.");
 
-        FloorType dirt = content.GetFloor("dirt");
+        FloorRow dirt = content.Tables.Floor.Get("dirt");
         session.Map.SetFloor(2, 0, dirt);
         Check(session.Runner.SubmitPlayerAction(new HarvestAction(2, 0)).IsExecuted, "문 옆의 나무를 캔다.");
         Check(session.Map.GetFloor(2, 0) == dirt && session.Map.GetPropOrNull(2, 0) == null, "나무가 사라지고 흙바닥이 남는다.");
         Thing? droppedOrNull = session.Map.GetItemAtOrNull(2, 0);
         PropRow tree = tables.Prop.Get("tree");
-        Check(droppedOrNull != null && droppedOrNull.Type == content.GetThing(tree.DropThing.Key) && droppedOrNull.Count == tree.DropAmount,
+        Check(droppedOrNull != null && droppedOrNull.Def == content.Tables.Thing.Get(tree.DropThing.Key) && droppedOrNull.Count == tree.DropAmount,
             "수확물의 종류와 수량이 Prop 표와 일치한다.");
     }
 
@@ -123,18 +133,18 @@ internal static partial class Program
     private static void CheckSwappedItems(GameContent original, GameContent edited, GameSession originalTown)
     {
         GameSession editedTown = TownMap.Create(edited, new Random(1));
-        ThingType potion = original.GetThing("potion");
-        ThingType gold = original.GetThing("gold");
+        ThingRow potion = original.Tables.Thing.Get("potion");
+        ThingRow gold = original.Tables.Thing.Get("gold");
         int swappedCount = 0;
         foreach (Thing thing in originalTown.Map.Things)
         {
-            if (thing.Type != potion && thing.Type != gold)
+            if (thing.Def != potion && thing.Def != gold)
             {
                 continue;
             }
 
-            ThingType expected = edited.GetThing(thing.Type == potion ? "gold" : "potion");
-            Check(editedTown.Map.GetItemAtOrNull(thing.X, thing.Y)?.Type == expected, $"범례를 교환한 뒤 ({thing.X}, {thing.Y})에 다른 아이템이 배치된다.");
+            ThingRow expected = edited.Tables.Thing.Get(thing.Def == potion ? "gold" : "potion");
+            Check(editedTown.Map.GetItemAtOrNull(thing.X, thing.Y)?.Def == expected, $"범례를 교환한 뒤 ({thing.X}, {thing.Y})에 다른 아이템이 배치된다.");
             swappedCount++;
         }
 
@@ -146,10 +156,10 @@ internal static partial class Program
         string row = ZString.Concat(original.TownLegend.Get("hero").Symbol, original.TownLegend.Get("spike_trap").Symbol,
             original.TownLegend.Get("gold").Symbol);
         GameSession session = TownMap.Create(edited, new Random(1), new string[] { row });
-        Check(session.Player.Type.MaxHp == healing + 5, "플레이어의 최대 체력이 복사본의 Actor 표와 일치한다.");
+        Check(session.Player.Def.MaxHp == healing + 5, "플레이어의 최대 체력이 복사본의 Actor 표와 일치한다.");
         Check(session.Runner.SubmitPlayerAction(MoveAction.RIGHT).IsExecuted, "함정 칸에 진입한다.");
         int injuredHp = session.Player.Hp;
-        Check(injuredHp == session.Player.Type.MaxHp - healing - 1, "가시 함정이 복사본의 StepDamage만큼 피해를 준다.");
+        Check(injuredHp == session.Player.Def.MaxHp - healing - 1, "가시 함정이 복사본의 StepDamage만큼 피해를 준다.");
         Check(!session.Runner.SubmitPlayerAction(PickUpAction.DEFAULT).IsExecuted, "가시 함정은 주울 수 없다.");
         Check(session.Runner.SubmitPlayerAction(MoveAction.RIGHT).IsExecuted, "물약 칸에 진입한다.");
         Check(session.Runner.SubmitPlayerAction(PickUpAction.DEFAULT).IsExecuted, "물약을 줍는다.");
@@ -158,6 +168,7 @@ internal static partial class Program
 
     private static void Check(bool bCondition, string message)
     {
+        _checkCount++;
         if (!bCondition)
         {
             throw new InvalidOperationException(message);

@@ -1,6 +1,6 @@
 namespace Elonia.Simulation
 {
-    internal interface IInteractionRule
+    public interface IInteractionRule
     {
         void Collect(InteractionPlan plan, Map map, Actor actor, int x, int y);
     }

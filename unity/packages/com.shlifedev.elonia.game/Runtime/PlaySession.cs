@@ -11,7 +11,7 @@ namespace Elonia.Game
 
         private readonly PlayerTravel _travel = new PlayerTravel();
 
-        private readonly InteractionPlan _plan = new InteractionPlan();
+        private readonly InteractionPlan _plan = new InteractionPlan(new AttackRule(), new HarvestRule(), new PickUpRule());
 
         private readonly List<char> _commandSymbols = new List<char>();
 
@@ -155,7 +155,7 @@ namespace Elonia.Game
             Thing? itemOrNull = Session.Map.GetItemAtOrNull(player.X, player.Y);
             if (itemOrNull != null)
             {
-                return ZString.Concat("E  ", GameText.GetPickUpLabel(itemOrNull.Type));
+                return ZString.Concat("E  ", GameText.GetPickUpLabel(itemOrNull.Row()));
             }
 
             return null;

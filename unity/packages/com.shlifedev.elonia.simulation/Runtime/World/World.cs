@@ -11,7 +11,9 @@ namespace Elonia.Simulation
 
         public Map CurrentMap { get; }
 
-        public World(Map currentMap)
+        public object? GameDataOrNull { get; }
+
+        public World(Map currentMap, object? gameDataOrNull = null)
         {
             if (currentMap == null)
             {
@@ -19,6 +21,7 @@ namespace Elonia.Simulation
             }
 
             CurrentMap = currentMap;
+            GameDataOrNull = gameDataOrNull;
         }
 
         internal void AdvanceTick()
@@ -29,7 +32,7 @@ namespace Elonia.Simulation
                 Actor actor = CurrentMap.Actors[index];
                 if (actor.IsAlive)
                 {
-                    actor.AddEnergy(actor.Type.Speed);
+                    actor.AddEnergy(actor.Def.Speed);
                 }
             }
         }

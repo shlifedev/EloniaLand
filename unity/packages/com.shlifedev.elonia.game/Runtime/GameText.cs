@@ -1,4 +1,5 @@
 using Cysharp.Text;
+using Elonia.Data;
 using Elonia.Simulation;
 
 namespace Elonia.Game
@@ -9,34 +10,34 @@ namespace Elonia.Game
         private const char LAST_HANGUL_SYLLABLE = '힣';
         private const int FINAL_CONSONANT_COUNT = 28;
 
-        public static string GetActorTypeName(ActorType type)
+        public static string GetActorTypeName(ActorRow row)
         {
-            return type.Id switch
+            return row.Id switch
             {
                 "hero" => "영웅",
                 "villager" => "마을 사람",
                 "rat" => "쥐",
                 "slime" => "슬라임",
                 "bat" => "박쥐",
-                _ => type.Name
+                _ => row.Name
             };
         }
 
-        public static string GetFloorName(FloorType type)
+        public static string GetFloorName(FloorRow row)
         {
-            return type.Id switch
+            return row.Id switch
             {
                 "grass" => "잔디",
                 "path" => "돌길",
                 "dirt" => "흙",
                 "wood_floor" => "나무 바닥",
-                _ => type.Name
+                _ => row.Name
             };
         }
 
-        public static string GetPropName(PropType type)
+        public static string GetPropName(PropRow row)
         {
-            return type.Id switch
+            return row.Id switch
             {
                 "tree" => "나무",
                 "bush" => "덤불",
@@ -47,33 +48,33 @@ namespace Elonia.Game
                 "sign" => "표지판",
                 "wall" => "벽",
                 "door" => "문",
-                _ => type.Name
+                _ => row.Name
             };
         }
 
-        public static string GetThingName(ThingType type)
+        public static string GetThingName(ThingRow row)
         {
-            return type.Id switch
+            return row.Id switch
             {
                 "potion" => "물약",
                 "gold" => "골드",
                 "branch" => "나뭇가지",
                 "spike_trap" => "가시 함정",
-                _ => type.Name
+                _ => row.Name
             };
         }
 
-        public static string GetPickUpLabel(ThingType type)
+        public static string GetPickUpLabel(ThingRow row)
         {
-            if (type.Id == "potion")
+            if (row.Id == "potion")
             {
                 return "물약 마시기";
             }
 
-            return ZString.Concat(GetThingName(type), " 줍기");
+            return ZString.Concat(GetThingName(row), " 줍기");
         }
 
-        public static string GetHarvestLabel(PropType prop)
+        public static string GetHarvestLabel(PropRow prop)
         {
             if (prop.Id == "tree")
             {
@@ -88,13 +89,13 @@ namespace Elonia.Game
             switch (interaction.Action)
             {
                 case AttackAction attack:
-                    return ZString.Concat(GetActorTypeName(attack.Target.Type), " 공격");
+                    return ZString.Concat(GetActorTypeName(attack.Target.Row()), " 공격");
                 case HarvestAction harvest:
-                    PropType? propOrNull = map.GetPropOrNull(harvest.TargetX, harvest.TargetY);
+                    PropRow? propOrNull = map.GetPropOrNull(harvest.TargetX, harvest.TargetY)?.Row();
                     return propOrNull != null ? GetHarvestLabel(propOrNull) : "캐기";
                 case PickUpAction _:
                     Thing? itemOrNull = map.GetItemAtOrNull(interaction.TargetX, interaction.TargetY);
-                    return itemOrNull != null ? GetPickUpLabel(itemOrNull.Type) : "줍기";
+                    return itemOrNull != null ? GetPickUpLabel(itemOrNull.Row()) : "줍기";
                 default:
                     return interaction.Action.Name;
             }

@@ -68,7 +68,7 @@ namespace Elonia.Simulation
                 return 0;
             }
 
-            int speed = actor.Type.Speed;
+            int speed = actor.Def.Speed;
             return (missingEnergy + speed - 1) / speed;
         }
 

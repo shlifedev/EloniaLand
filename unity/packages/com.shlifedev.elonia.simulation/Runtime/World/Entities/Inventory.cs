@@ -1,6 +1,6 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 
 namespace Elonia.Simulation
 {
@@ -15,32 +15,44 @@ namespace Elonia.Simulation
             Stacks = new ReadOnlyCollection<ItemStack>(_stacks);
         }
 
-        public int GetCount(ThingType type)
+        public int GetCount(IThingDef def)
         {
-            int index = FindStackIndex(type);
+            int index = FindStackIndex(def);
             return index >= 0 ? _stacks[index].Count : 0;
         }
 
-        internal void Add(ThingType type, int amount)
+        public void Add(IThingDef def, int amount)
         {
-            Debug.Assert(type != null);
-            Debug.Assert(amount > 0);
+            if (def == null)
+            {
+                throw new ArgumentNullException(nameof(def));
+            }
 
-            int index = FindStackIndex(type);
+            if (!def.IsItem)
+            {
+                throw new ArgumentException("Only an item can be added to an inventory.", nameof(def));
+            }
+
+            if (amount <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(amount));
+            }
+
+            int index = FindStackIndex(def);
             if (index >= 0)
             {
-                _stacks[index] = new ItemStack(type, _stacks[index].Count + amount);
+                _stacks[index] = new ItemStack(def, checked(_stacks[index].Count + amount));
                 return;
             }
 
-            _stacks.Add(new ItemStack(type, amount));
+            _stacks.Add(new ItemStack(def, amount));
         }
 
-        private int FindStackIndex(ThingType type)
+        private int FindStackIndex(IThingDef def)
         {
             for (int index = 0; index < _stacks.Count; index++)
             {
-                if (_stacks[index].Type == type)
+                if (ReferenceEquals(_stacks[index].Def, def))
                 {
                     return index;
                 }

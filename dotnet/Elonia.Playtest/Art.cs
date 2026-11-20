@@ -38,7 +38,7 @@ internal static class Art
 
     public static Sprite GetGround(Map map, int x, int y)
     {
-        FloorType floor = map.GetFloor(x, y);
+        IFloorDef floor = map.GetFloor(x, y);
         if (floor.Id == "path")
         {
             return PATH;
@@ -65,7 +65,7 @@ internal static class Art
 
     public static Sprite? GetPropSpriteOrNull(Map map, int x, int y)
     {
-        PropType? propOrNull = map.GetPropOrNull(x, y);
+        IPropDef? propOrNull = map.GetPropOrNull(x, y);
         if (propOrNull == null)
         {
             return null;
@@ -134,7 +134,7 @@ internal static class Art
 
     public static WallPiece? GetWallPieceOrNull(Map map, int x, int y)
     {
-        PropType? propOrNull = map.GetPropOrNull(x, y);
+        IPropDef? propOrNull = map.GetPropOrNull(x, y);
         if (propOrNull?.Id is not ("wall" or "door"))
         {
             return null;
@@ -150,23 +150,23 @@ internal static class Art
 
     public static Sprite GetActorSprite(Actor actor)
     {
-        ActorType type = actor.Type;
-        if (type.Id == "hero")
+        string id = actor.Def.Id;
+        if (id == "hero")
         {
             return HERO;
         }
 
-        if (type.Id == "rat")
+        if (id == "rat")
         {
             return RAT;
         }
 
-        if (type.Id == "slime")
+        if (id == "slime")
         {
             return SLIME;
         }
 
-        if (type.Id == "bat")
+        if (id == "bat")
         {
             return BAT;
         }
@@ -174,19 +174,19 @@ internal static class Art
         return VILLAGERS[actor.ID % VILLAGERS.Length];
     }
 
-    public static Sprite GetThingSprite(ThingType type)
+    public static Sprite GetThingSprite(IThingDef def)
     {
-        if (type.Id == "potion")
+        if (def.Id == "potion")
         {
             return POTION;
         }
 
-        if (type.Id == "branch")
+        if (def.Id == "branch")
         {
             return BRANCH;
         }
 
-        if (type.Id == "spike_trap")
+        if (def.Id == "spike_trap")
         {
             return SPIKE_TRAP;
         }
@@ -235,7 +235,7 @@ internal static class Art
         return Sprite.Town(bRight ? wallRight : wall);
     }
 
-    private static Sprite GetDirtPiece(Map map, int x, int y, FloorType floor)
+    private static Sprite GetDirtPiece(Map map, int x, int y, IFloorDef floor)
     {
         bool bNorth = IsFloor(map, x, y - 1, floor);
         bool bSouth = IsFloor(map, x, y + 1, floor);
@@ -302,9 +302,9 @@ internal static class Art
         return map.IsInside(x, y) && map.GetPropOrNull(x, y)?.Id is "wall" or "door";
     }
 
-    private static bool IsFloor(Map map, int x, int y, FloorType type)
+    private static bool IsFloor(Map map, int x, int y, IFloorDef floor)
     {
-        return map.IsInside(x, y) && map.GetFloor(x, y) == type;
+        return map.IsInside(x, y) && map.GetFloor(x, y) == floor;
     }
 
     private enum ETreeKind

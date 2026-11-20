@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Cysharp.Text;
+using Elonia.Data;
 using Elonia.Events;
 using Elonia.Game;
 using Elonia.Simulation;
@@ -52,7 +53,7 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
     private readonly UiFont _font;
     private readonly GameSession _session;
 
-    private readonly IReadOnlyDictionary<(int X, int Y, PropType Prop), Sprite> _houseSprites;
+    private readonly IReadOnlyDictionary<(int X, int Y, IPropDef Prop), Sprite> _houseSprites;
     private readonly int _screenWidth;
     private readonly int _screenHeight;
     private readonly Dictionary<Actor, ActorView> _actorViews = new Dictionary<Actor, ActorView>();
@@ -71,7 +72,7 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
 
     public (int X, int Y)? MarkedTileOrNull { get; set; }
 
-    public GameView(SpriteAtlas atlas, UiFont font, GameSession session, IReadOnlyDictionary<(int X, int Y, PropType Prop), Sprite> houseSprites,
+    public GameView(SpriteAtlas atlas, UiFont font, GameSession session, IReadOnlyDictionary<(int X, int Y, IPropDef Prop), Sprite> houseSprites,
         int screenWidth, int screenHeight)
     {
         _atlas = atlas;
@@ -81,21 +82,14 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
         _screenWidth = screenWidth;
         _screenHeight = screenHeight;
 
-        Map map = session.Map;
-        for (int index = 0; index < map.Actors.Count; index++)
-        {
-            Actor actor = map.Actors[index];
-            _actorViews.Add(actor, new ActorView(actor));
-        }
-
         session.World.Events.Register<ActorAttacked, ActorDied, ItemPickedUp, PropHarvested, ActorDamaged, MoveBlocked, ActorNoticedPlayer>(this);
         GetCameraTarget(out _cameraX, out _cameraY);
     }
 
     public void OnEvent(ActorAttacked message)
     {
-        ActorView attacker = _actorViews[message.Attacker];
-        ActorView target = _actorViews[message.Target];
+        ActorView attacker = GetActorView(message.Attacker);
+        ActorView target = GetActorView(message.Target);
         float directionX = Math.Sign(message.Target.X - message.Attacker.X);
         float directionY = Math.Sign(message.Target.Y - message.Attacker.Y);
         if (directionX != 0.0f)
@@ -115,7 +109,7 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
 
     public void OnEvent(ActorDamaged message)
     {
-        ActorView target = _actorViews[message.Actor];
+        ActorView target = GetActorView(message.Actor);
         target.FlashTime = FLASH_SECONDS;
         AddFloatingText(ZString.Concat("-", message.Damage), message.Actor, HIT_TINT);
         if (message.Actor == _session.Player)
@@ -139,14 +133,14 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
                 AddFloatingText(ZString.Concat("+", message.Amount, " 골드"), message.Actor, MessageLog.GOLD);
                 break;
             default:
-                AddFloatingText(ZString.Concat("+", message.Amount, " ", GameText.GetThingName(message.Thing.Type)), message.Actor, MessageLog.NORMAL);
+                AddFloatingText(ZString.Concat("+", message.Amount, " ", GameText.GetThingName(message.Thing.Row())), message.Actor, MessageLog.NORMAL);
                 break;
         }
     }
 
     public void OnEvent(PropHarvested message)
     {
-        ActorView view = _actorViews[message.Actor];
+        ActorView view = GetActorView(message.Actor);
         int directionX = message.X - message.Actor.X;
         int directionY = message.Y - message.Actor.Y;
         if (directionX != 0)
@@ -159,7 +153,7 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
 
     public void OnEvent(MoveBlocked message)
     {
-        ActorView view = _actorViews[message.Actor];
+        ActorView view = GetActorView(message.Actor);
         if (message.DeltaX != 0)
         {
             view.IsFacingLeft = message.DeltaX < 0;
@@ -180,7 +174,7 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
         for (int index = 0; index < map.Actors.Count; index++)
         {
             Actor actor = map.Actors[index];
-            UpdateActorView(actor, _actorViews[actor], deltaTime);
+            UpdateActorView(actor, GetActorView(actor), deltaTime);
         }
 
         for (int index = _floatingTexts.Count - 1; index >= 0; index--)
@@ -243,7 +237,7 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
 
     public Vector2 GetActorScreenPosition(Actor actor)
     {
-        ActorView view = _actorViews[actor];
+        ActorView view = GetActorView(actor);
         return GetTileScreenPosition(view.X, view.Y);
     }
 
@@ -341,7 +335,7 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
         for (int index = 0; index < map.Actors.Count; index++)
         {
             Actor actor = map.Actors[index];
-            ActorView view = _actorViews[actor];
+            ActorView view = GetActorView(actor);
             if (view.DeadTime < FADE_OUT_SECONDS)
             {
                 _drawItems.Add(new WorldDrawItem(view.Y + 1.0f, EWorldDrawKind.Actor, actor.X, actor.Y, index));
@@ -369,7 +363,7 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
     {
         int screenX = x * TILE_SIZE - cameraX;
         int screenY = y * TILE_SIZE - cameraY;
-        PropType? propOrNull = map.GetPropOrNull(x, y);
+        IPropDef? propOrNull = map.GetPropOrNull(x, y);
         if (propOrNull != null && _houseSprites.TryGetValue((x, y, propOrNull), out Sprite house))
         {
             _atlas.Draw(house, screenX, screenY, TILE_SIZE, WHITE);
@@ -456,7 +450,7 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
 
     private bool IsPlayerBehindWall(int x, int y)
     {
-        ActorView player = _actorViews[_session.Player];
+        ActorView player = GetActorView(_session.Player);
         float topHeightInTiles = WALL_TOP_HEIGHT / (float)TILE_SIZE;
         return MathF.Abs(player.X - x) < 1.5f && player.Y > y - 1.0f - topHeightInTiles && player.Y < y;
     }
@@ -467,12 +461,12 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
         int screenX = thing.X * TILE_SIZE - cameraX;
         int screenY = thing.Y * TILE_SIZE - cameraY;
         Raylib.DrawEllipse(screenX + TILE_SIZE / 2, screenY + TILE_SIZE - 6, 11.0f, 4.0f, SHADOW);
-        _atlas.Draw(Art.GetThingSprite(thing.Type), screenX, screenY - 4 + (int)MathF.Round(bob), TILE_SIZE, WHITE);
+        _atlas.Draw(Art.GetThingSprite(thing.Def), screenX, screenY - 4 + (int)MathF.Round(bob), TILE_SIZE, WHITE);
     }
 
     private void DrawActor(Actor actor, int cameraX, int cameraY)
     {
-        ActorView view = _actorViews[actor];
+        ActorView view = GetActorView(actor);
         GetActorScreenPosition(actor, view, cameraX, cameraY, out int screenX, out int screenY, out int hop);
 
         float alpha = 1.0f - view.DeadTime / FADE_OUT_SECONDS;
@@ -491,15 +485,15 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
         {
             Actor actor = map.Actors[index];
 
-            if (!actor.IsAlive || actor.Hp == actor.Type.MaxHp || actor == _session.Player)
+            if (!actor.IsAlive || actor.Hp == actor.Def.MaxHp || actor == _session.Player)
             {
                 continue;
             }
 
-            GetActorScreenPosition(actor, _actorViews[actor], cameraX, cameraY, out int screenX, out int screenY, out int hop);
+            GetActorScreenPosition(actor, GetActorView(actor), cameraX, cameraY, out int screenX, out int screenY, out int hop);
             int left = screenX + (TILE_SIZE - BAR_WIDTH) / 2;
             int top = screenY - 12 - hop;
-            int fill = (BAR_WIDTH - 2) * actor.Hp / actor.Type.MaxHp;
+            int fill = (BAR_WIDTH - 2) * actor.Hp / actor.Def.MaxHp;
             Raylib.DrawRectangle(left, top, BAR_WIDTH, BAR_HEIGHT, HP_BAR_BACK);
             Raylib.DrawRectangle(left + 1, top + 1, fill, BAR_HEIGHT - 2, HP_BAR_FILL);
         }
@@ -538,7 +532,7 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
     private void GetCameraTarget(out float targetX, out float targetY)
     {
         Map map = _session.Map;
-        ActorView player = _actorViews[_session.Player];
+        ActorView player = GetActorView(_session.Player);
 
         float centerX = (player.X + 0.5f) * TILE_SIZE;
         float centerY = (player.Y + 0.5f) * TILE_SIZE;
@@ -558,9 +552,20 @@ internal sealed class GameView : IEventListener<ActorAttacked>, IEventListener<A
         return MathF.Sin(_time * 70.0f * frequencyScale) * SHAKE_STRENGTH * (_shakeTime / SHAKE_SECONDS);
     }
 
+    private ActorView GetActorView(Actor actor)
+    {
+        if (!_actorViews.TryGetValue(actor, out ActorView? view))
+        {
+            view = new ActorView(actor);
+            _actorViews.Add(actor, view);
+        }
+
+        return view;
+    }
+
     private void AddFloatingText(string text, Actor actor, Color color)
     {
-        _floatingTexts.Add(new FloatingText(text, _actorViews[actor], color));
+        _floatingTexts.Add(new FloatingText(text, GetActorView(actor), color));
     }
 
     private static int CompareByFootY(WorldDrawItem left, WorldDrawItem right)

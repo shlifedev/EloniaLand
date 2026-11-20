@@ -51,8 +51,8 @@ internal static class Hud
         int barLeft = LEFT + 76;
         int barTop = TOP + 16;
         Raylib.DrawRectangle(barLeft, barTop, BAR_WIDTH, BAR_HEIGHT, HP_BACK);
-        Raylib.DrawRectangle(barLeft, barTop, BAR_WIDTH * player.Hp / player.Type.MaxHp, BAR_HEIGHT, HP_FILL);
-        string hpText = ZString.Concat(player.Hp, "/", player.Type.MaxHp);
+        Raylib.DrawRectangle(barLeft, barTop, BAR_WIDTH * player.Hp / player.Def.MaxHp, BAR_HEIGHT, HP_FILL);
+        string hpText = ZString.Concat(player.Hp, "/", player.Def.MaxHp);
         font.DrawCentered(hpText, barLeft + BAR_WIDTH / 2, barTop, ETextSize.Small, WHITE);
 
         atlas.Draw(Art.GOLD, LEFT + 10, TOP + 46, 32, WHITE);
@@ -84,8 +84,8 @@ internal static class Hud
         {
             ItemStack stack = stacks[index];
             int rowTop = TOP + TITLE_HEIGHT + index * ROW_HEIGHT;
-            atlas.Draw(Art.GetThingSprite(stack.Type), LEFT + 10, rowTop, 32, WHITE);
-            font.Draw(ZString.Concat(GameText.GetThingName(stack.Type), "  x", stack.Count), LEFT + 52, rowTop, ETextSize.Normal, MessageLog.NORMAL);
+            atlas.Draw(Art.GetThingSprite(stack.Def), LEFT + 10, rowTop, 32, WHITE);
+            font.Draw(ZString.Concat(GameText.GetThingName(stack.Def.Row()), "  x", stack.Count), LEFT + 52, rowTop, ETextSize.Normal, MessageLog.NORMAL);
         }
     }
 

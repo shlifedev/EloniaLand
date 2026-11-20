@@ -2,12 +2,12 @@ namespace Elonia.Simulation
 {
     public readonly struct ItemStack
     {
-        public ThingType Type { get; }
+        public IThingDef Def { get; }
         public int Count { get; }
 
-        public ItemStack(ThingType type, int count)
+        public ItemStack(IThingDef def, int count)
         {
-            Type = type;
+            Def = def;
             Count = count;
         }
     }

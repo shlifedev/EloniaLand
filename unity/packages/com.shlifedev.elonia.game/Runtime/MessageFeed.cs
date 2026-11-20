@@ -1,4 +1,5 @@
 using Cysharp.Text;
+using Elonia.Data;
 using Elonia.Events;
 using Elonia.Simulation;
 
@@ -20,11 +21,11 @@ namespace Elonia.Game
         {
             if (message.Attacker == _player)
             {
-                Log(ZString.Concat(GameText.GetActorTypeName(message.Target.Type), "에게 ", message.Damage, "의 피해를 주었다."), ELogTone.Normal);
+                Log(ZString.Concat(GameText.GetActorTypeName(message.Target.Row()), "에게 ", message.Damage, "의 피해를 주었다."), ELogTone.Normal);
             }
             else if (message.Target == _player)
             {
-                Log(ZString.Concat(GameText.GetActorTypeName(message.Attacker.Type), "의 공격! ", message.Damage, "의 피해를 입었다."), ELogTone.Danger);
+                Log(ZString.Concat(GameText.GetActorTypeName(message.Attacker.Row()), "의 공격! ", message.Damage, "의 피해를 입었다."), ELogTone.Danger);
             }
         }
 
@@ -36,7 +37,7 @@ namespace Elonia.Game
             }
             else
             {
-                Log(ZString.Concat(GameText.WithObjectParticle(GameText.GetActorTypeName(message.Actor.Type)), " 쓰러뜨렸다."), ELogTone.Good);
+                Log(ZString.Concat(GameText.WithObjectParticle(GameText.GetActorTypeName(message.Actor.Row())), " 쓰러뜨렸다."), ELogTone.Good);
             }
         }
 
@@ -47,7 +48,7 @@ namespace Elonia.Game
                 return;
             }
 
-            string name = GameText.GetThingName(message.Thing.Type);
+            string name = GameText.GetThingName(message.Thing.Row());
             switch (message.Effect)
             {
                 case EItemEffect.Heal:
@@ -70,14 +71,14 @@ namespace Elonia.Game
             }
 
             Log(ZString.Concat(GameText.WithObjectParticle(GameText.GetPropName(message.HarvestedProp)), " 베었다. ",
-                GameText.WithSubjectParticle(GameText.GetThingName(message.DroppedThing.Type)), " 떨어졌다."), ELogTone.Normal);
+                GameText.WithSubjectParticle(GameText.GetThingName(message.DroppedThing.Row())), " 떨어졌다."), ELogTone.Normal);
         }
 
         public void OnEvent(StepTriggered message)
         {
             if (message.Actor == _player)
             {
-                Log(ZString.Concat(GameText.WithObjectParticle(GameText.GetThingName(message.Thing.Type)), " 밟았다!"), ELogTone.Danger);
+                Log(ZString.Concat(GameText.WithObjectParticle(GameText.GetThingName(message.Thing.Row())), " 밟았다!"), ELogTone.Danger);
             }
         }
 

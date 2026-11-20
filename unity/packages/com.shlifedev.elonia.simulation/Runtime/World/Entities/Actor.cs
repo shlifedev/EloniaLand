@@ -5,7 +5,7 @@ namespace Elonia.Simulation
 {
     public sealed class Actor : Entity
     {
-        public ActorType Type { get; }
+        public IActorDef Def { get; }
         public int Hp { get; private set; }
         public int Gold { get; private set; }
         public long ActionCount { get; private set; }
@@ -17,16 +17,21 @@ namespace Elonia.Simulation
 
         public Inventory Inventory { get; } = new Inventory();
 
-        public Actor(int id, ActorType type, int x, int y, IActorController? controllerOrNull = null)
+        public Actor(int id, IActorDef def, int x, int y, IActorController? controllerOrNull = null)
             : base(id, x, y)
         {
-            if (type == null)
+            if (def == null)
             {
-                throw new ArgumentNullException(nameof(type));
+                throw new ArgumentNullException(nameof(def));
             }
 
-            Type = type;
-            Hp = type.MaxHp;
+            if (def.MaxHp <= 0 || def.Speed <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(def), "An actor needs positive max HP and speed.");
+            }
+
+            Def = def;
+            Hp = def.MaxHp;
             ControllerOrNull = controllerOrNull;
         }
 
@@ -43,22 +48,39 @@ namespace Elonia.Simulation
             ActionCount++;
         }
 
-        internal void TakeDamage(int amount)
+        public void TakeDamage(int amount)
         {
-            Debug.Assert(amount >= 0);
+            if (amount < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(amount));
+            }
+
             Hp = Math.Max(0, Hp - amount);
         }
 
-        internal void Heal(int amount)
+        public void Heal(int amount)
         {
-            Debug.Assert(amount >= 0);
-            Hp = Math.Min(Type.MaxHp, Hp + amount);
+            if (amount < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(amount));
+            }
+
+            if (!IsAlive && amount > 0)
+            {
+                throw new InvalidOperationException("A dead actor cannot be healed.");
+            }
+
+            Hp += Math.Min(amount, Def.MaxHp - Hp);
         }
 
-        internal void AddGold(int amount)
+        public void AddGold(int amount)
         {
-            Debug.Assert(amount >= 0);
-            Gold += amount;
+            if (amount < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(amount));
+            }
+
+            Gold = checked(Gold + amount);
         }
     }
 }

@@ -168,10 +168,10 @@ internal sealed partial class Debugger
         Cell cell = map.GetCell(tileX, tileY);
         ImGui.BeginTooltip();
         ImGui.TextUnformatted(ZString.Format("칸 ({0}, {1}){2}", tileX, tileY, cell.IsWalkable ? " 걸을 수 있음" : " 막힘"));
-        ImGui.TextUnformatted(ZString.Concat("바닥: ", DebugNames.GetFloorName(cell.Floor)));
+        ImGui.TextUnformatted(ZString.Concat("바닥: ", DebugNames.GetFloorName(cell.Floor.Row())));
         if (cell.PropOrNull != null)
         {
-            ImGui.TextUnformatted(ZString.Concat("물체: ", DebugNames.GetPropName(cell.PropOrNull)));
+            ImGui.TextUnformatted(ZString.Concat("물체: ", DebugNames.GetPropName(cell.PropOrNull.Row())));
         }
 
         IReadOnlyList<Actor> actors = map.Actors;

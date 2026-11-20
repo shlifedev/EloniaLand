@@ -1,24 +1,31 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using ZLinq;
 
 namespace Elonia.Simulation
 {
     public sealed class InteractionPlan
     {
-        private static readonly IInteractionRule[] RULES = new IInteractionRule[]
-        {
-            new AttackRule(),
-            new HarvestRule(),
-            new PickUpRule()
-        };
+        private readonly IInteractionRule[] _rules;
 
         private readonly List<Interaction> _items = new List<Interaction>();
 
         public IReadOnlyList<Interaction> Items { get; }
 
-        public InteractionPlan()
+        public InteractionPlan(params IInteractionRule[] rules)
         {
+            if (rules == null)
+            {
+                throw new ArgumentNullException(nameof(rules));
+            }
+
+            if (rules.AsValueEnumerable().Any(static rule => rule == null))
+            {
+                throw new ArgumentException("An interaction rule must not be null.", nameof(rules));
+            }
+
+            _rules = (IInteractionRule[])rules.Clone();
             Items = new ReadOnlyCollection<Interaction>(_items);
         }
 
@@ -40,9 +47,9 @@ namespace Elonia.Simulation
                 return;
             }
 
-            for (int index = 0; index < RULES.Length; index++)
+            for (int index = 0; index < _rules.Length; index++)
             {
-                RULES[index].Collect(this, map, actor, x, y);
+                _rules[index].Collect(this, map, actor, x, y);
             }
         }
 
@@ -67,12 +74,12 @@ namespace Elonia.Simulation
             return TryGetFirst(1, out interaction);
         }
 
-        internal void Add(ActorAction action, int tileX, int tileY, int reach)
+        public void Add(ActorAction action, int tileX, int tileY, int reach)
         {
             _items.Add(new Interaction(action, tileX, tileY, reach));
         }
 
-        internal void Add(ActorAction action, Actor targetActor, int reach)
+        public void Add(ActorAction action, Actor targetActor, int reach)
         {
             _items.Add(new Interaction(action, targetActor, reach));
         }

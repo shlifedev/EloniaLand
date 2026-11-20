@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ZLinq;
 
 namespace Elonia.Simulation
 {
@@ -12,9 +13,9 @@ namespace Elonia.Simulation
         public int X { get; }
         public int Y { get; }
 
-        public FloorType Floor { get; internal set; }
+        public IFloorDef Floor { get; internal set; }
 
-        public PropType? PropOrNull { get; internal set; }
+        public IPropDef? PropOrNull { get; internal set; }
 
         public Actor? LivingActorOrNull => _actorOrNull != null && _actorOrNull.IsAlive ? _actorOrNull : null;
 
@@ -24,7 +25,7 @@ namespace Elonia.Simulation
 
         public bool CanEnter => IsWalkable && LivingActorOrNull == null;
 
-        internal Cell(int x, int y, FloorType floor)
+        internal Cell(int x, int y, IFloorDef floor)
         {
             X = x;
             Y = y;
@@ -38,16 +39,7 @@ namespace Elonia.Simulation
                 return null;
             }
 
-            for (int index = 0; index < _thingsOrNull.Count; index++)
-            {
-                Thing thing = _thingsOrNull[index];
-                if (thing.Type.GetPartOrNull<ItemPart>() != null)
-                {
-                    return thing;
-                }
-            }
-
-            return null;
+            return _thingsOrNull.AsValueEnumerable().FirstOrDefault(static thing => thing.Def.IsItem);
         }
 
         internal void EnterActor(Actor actor)
