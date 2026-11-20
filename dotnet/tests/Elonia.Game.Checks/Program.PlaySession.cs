@@ -29,7 +29,7 @@ internal static partial class Program
         EventRecorder recorder = new EventRecorder(play.Session);
         Actor slime = play.Session.Map.Actors[1];
         Check(play.Execute(EPlayerCommand.MoveRight).IsExecuted, "적이 있는 쪽으로 움직이면 행동이 실행된다.");
-        Check(play.Session.Player.X == 0 && slime.Hp < slime.Type.MaxHp, "적이 있는 쪽으로 움직이면 이동 대신 공격한다.");
+        Check(play.Session.Player.X == 0 && slime.Hp < slime.Def.MaxHp, "적이 있는 쪽으로 움직이면 이동 대신 공격한다.");
         Check(recorder.HasMessageContaining("슬라임에게"), "공격 문장이 로그 이벤트로 나간다.");
         Check(play.GetCommandText() == "d", "부딪히기 공격도 이동 명령으로 기록된다.");
     }
@@ -132,6 +132,14 @@ internal static partial class Program
             play.Execute(PlayerCommandSymbols.GetCommand(commands[index]));
         }
 
+        Actor player = play.Session.Player;
+        Check(play.Session.World.Tick == 30 && player.X == 14 && player.Y == 26, "기준 입력의 마지막 틱과 위치가 일치한다.");
+        Check(player.Hp == 12 && player.Def.MaxHp == 12, "기준 입력을 마치면 체력이 12/12다.");
+        Check(recorder.Messages.Count == 3
+            && recorder.Messages[0] == "마을의 조용한 하루. 동쪽 들판에서 무언가 꿈틀거린다."
+            && recorder.Messages[1] == "물약을 마셨다. (체력 +5)"
+            && recorder.Messages[2] == "나무를 베었다. 나뭇가지가 떨어졌다.", "기준 입력의 로그 세 줄과 순서가 일치한다.");
+        Check(play.GetPromptOrNull() == "E  나뭇가지 줍기", "마지막 위치에서 나뭇가지 줍기를 안내한다.");
         Check(play.GetCommandText() == commands, "입력 기록이 넣은 명령과 같다.");
         using (Utf16ValueStringBuilder builder = ZString.CreateStringBuilder())
         {

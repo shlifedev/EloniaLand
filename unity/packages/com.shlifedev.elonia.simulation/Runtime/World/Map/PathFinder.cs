@@ -54,9 +54,9 @@ namespace Elonia.Simulation
                 int index = _queue[head++];
                 int x = index % width;
                 int y = index / width;
-                for (int direction = 0; direction < MoveAction.DIRECTIONS.Count; direction++)
+                for (int direction = 0; direction < GridMath.DIRECTIONS.Count; direction++)
                 {
-                    MoveAction move = MoveAction.DIRECTIONS[direction];
+                    (int DeltaX, int DeltaY) move = GridMath.DIRECTIONS[direction];
                     int nextX = x + move.DeltaX;
                     int nextY = y + move.DeltaY;
                     if (!map.IsInside(nextX, nextY))

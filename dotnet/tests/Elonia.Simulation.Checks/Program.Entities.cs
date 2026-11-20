@@ -7,20 +7,7 @@ public static partial class Program
 {
     private static void CheckEntities()
     {
-        ThingType rock = new ThingType("Rock");
-        CheckEqual<ItemPart?>(null, rock.GetPartOrNull<ItemPart>(), "A thing type without an item part cannot be picked up.");
-
-        ItemPart heal = new ItemPart(EItemEffect.Heal, 1);
-        CheckEqual<ItemPart?>(heal, new ThingType("Herb", heal).GetPartOrNull<ItemPart>(), "A thing type gives back its part.");
-        CheckThrows<ArgumentException>(() => new ThingType("Twice", heal, new ItemPart(EItemEffect.Gold, 1)),
-            "A thing type cannot have two parts of the same kind.");
-        CheckThrows<ArgumentException>(() => new ThingType("Broken", heal, null!), "A thing type rejects a null part.");
-        CheckThrows<ArgumentNullException>(() => new ThingType("Broken", (IThingPart[])null!), "A thing type rejects a null part list.");
-        IThingPart[] parts = new IThingPart[] { heal };
-        ThingType copied = new ThingType("Copied", parts);
-        parts[0] = new ItemPart(EItemEffect.Gold, 1);
-        CheckEqual<ItemPart?>(heal, copied.GetPartOrNull<ItemPart>(), "Changing the given array later does not change the type.");
-
+        TestThingDef rock = new TestThingDef("Rock");
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
         Actor player = map.AddEntity(TestActors.Create(1, 5, 5, 10));
         Thing potion = map.AddEntity(new Thing(2, TestItems.POTION, 6, 5));
@@ -46,9 +33,10 @@ public static partial class Program
         CheckThrows<ArgumentException>(() => map.AddEntity(new Thing(map.CreateEntityID(), rock, -1, 5)),
             "Things must be inside the map.");
 
-        GameRunner runner = new GameRunner(new World(map), player);
-        runner.SubmitPlayerAction(MoveAction.LEFT);
-        CheckEqual(false, runner.SubmitPlayerAction(PickUpAction.DEFAULT).IsExecuted,
-            "A thing without an item part cannot be picked up.");
+        CheckThrows<ArgumentException>(() => map.AddEntity(new Thing(104, TestItems.GOLD, 6, 5)), "한 칸에는 아이템을 하나만 놓을 수 있다.");
+        CheckThrows<ArgumentException>(() => map.AddEntity(new Thing(105, TestItems.GOLD, -1, 5)), "아이템을 맵 밖에 놓을 수 없다.");
+        CheckThrows<ArgumentOutOfRangeException>(() => new Thing(106, TestItems.GOLD, 0, 0, 0), "물건 수량은 양수다.");
+
+        CheckMovementValidation();
     }
 }

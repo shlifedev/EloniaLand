@@ -26,10 +26,10 @@ internal static class Program
         string middle = ZString.Concat(wood, tables.TownLegend.Get("grass").Symbol, stone);
         string top = ZString.Concat(wood, tables.TownLegend.Get("hero").Symbol, stone);
         GameSession session = TownMap.Create(content, new Random(1), new string[] { top, middle, middle });
-        Dictionary<(int X, int Y, PropType Prop), Sprite> sprites = HouseSprites.Create(session, content);
+        Dictionary<(int X, int Y, IPropDef Prop), Sprite> sprites = HouseSprites.Create(session, content);
         Check(sprites.Count == 21, "나무집과 돌집의 모든 칸에 그림이 배정된다.");
-        PropType woodHouse = content.GetProp(tables.TownLegend.Get("wood_house").Prop.Key);
-        PropType stoneHouse = content.GetProp(tables.TownLegend.Get("stone_house").Prop.Key);
+        IPropDef woodHouse = tables.Prop.Get(tables.TownLegend.Get("wood_house").Prop);
+        IPropDef stoneHouse = tables.Prop.Get(tables.TownLegend.Get("stone_house").Prop);
         Check(sprites[(0, 0, woodHouse)].Equals(Art.GetWoodHouseSprite(0, 0, 3)), "나무집에 나무 지붕이 표시된다.");
         Check(sprites[(7, 2, stoneHouse)].Equals(Art.GetStoneHouseSprite(3, 2, 4)), "돌집에 돌벽이 표시된다.");
     }

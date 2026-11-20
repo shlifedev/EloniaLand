@@ -1,12 +1,19 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 
 namespace Elonia.Simulation
 {
     public sealed class Map
     {
+        private sealed class GroundFloor : IFloorDef
+        {
+            public string Id => "Ground";
+            public bool IsWalkable => true;
+        }
+
+        private static readonly IFloorDef GROUND = new GroundFloor();
+
         private readonly Cell[] _cells;
         private readonly List<Actor> _actors = new List<Actor>();
         private readonly List<Thing> _things = new List<Thing>();
@@ -34,7 +41,7 @@ namespace Elonia.Simulation
             {
                 for (int x = 0; x < width; x++)
                 {
-                    _cells[y * width + x] = new Cell(x, y, FloorType.GROUND);
+                    _cells[y * width + x] = new Cell(x, y, GROUND);
                 }
             }
 
@@ -53,37 +60,37 @@ namespace Elonia.Simulation
             return _cells[y * Width + x];
         }
 
-        public FloorType GetFloor(int x, int y)
+        public IFloorDef GetFloor(int x, int y)
         {
             return GetCell(x, y).Floor;
         }
 
-        public void SetFloor(int x, int y, FloorType type)
+        public void SetFloor(int x, int y, IFloorDef def)
         {
-            if (type == null)
+            if (def == null)
             {
-                throw new ArgumentNullException(nameof(type));
+                throw new ArgumentNullException(nameof(def));
             }
 
-            GetCell(x, y).Floor = type;
+            GetCell(x, y).Floor = def;
         }
 
-        public PropType? GetPropOrNull(int x, int y)
+        public IPropDef? GetPropOrNull(int x, int y)
         {
             return GetCell(x, y).PropOrNull;
         }
 
-        public void SetProp(int x, int y, PropType type)
+        public void SetProp(int x, int y, IPropDef def)
         {
-            if (type == null)
+            if (def == null)
             {
-                throw new ArgumentNullException(nameof(type));
+                throw new ArgumentNullException(nameof(def));
             }
 
-            GetCell(x, y).PropOrNull = type;
+            GetCell(x, y).PropOrNull = def;
         }
 
-        internal void RemoveProp(int x, int y)
+        public void RemoveProp(int x, int y)
         {
             GetCell(x, y).PropOrNull = null;
         }
@@ -117,6 +124,11 @@ namespace Elonia.Simulation
                 throw new ArgumentNullException(nameof(entity));
             }
 
+            if (entity.MapOrNull != null)
+            {
+                throw new ArgumentException("The entity already belongs to a map.", nameof(entity));
+            }
+
             if (!IsWalkable(entity.X, entity.Y))
             {
                 throw new ArgumentException("An entity must be placed on a walkable tile inside the map.", nameof(entity));
@@ -139,7 +151,7 @@ namespace Elonia.Simulation
                     GetCell(actor.X, actor.Y).EnterActor(actor);
                     break;
                 case Thing thing:
-                    if (thing.Type.GetPartOrNull<ItemPart>() != null && GetItemAtOrNull(thing.X, thing.Y) != null)
+                    if (thing.Def.IsItem && GetItemAtOrNull(thing.X, thing.Y) != null)
                     {
                         throw new ArgumentException("A tile can hold only one item.", nameof(entity));
                     }
@@ -151,13 +163,19 @@ namespace Elonia.Simulation
                     throw new ArgumentException($"Unknown entity type {entity.GetType().Name}.", nameof(entity));
             }
 
+            entity.MapOrNull = this;
             _nextEntityID = Math.Max(_nextEntityID, entity.ID + 1);
             return entity;
         }
 
         public bool Contains(Entity entity)
         {
-            return FindEntityOrNull(entity.ID) == entity;
+            if (entity == null)
+            {
+                throw new ArgumentNullException(nameof(entity));
+            }
+
+            return entity.MapOrNull == this;
         }
 
         public Thing? GetItemAtOrNull(int x, int y)
@@ -165,20 +183,39 @@ namespace Elonia.Simulation
             return GetCell(x, y).GetItemOrNull();
         }
 
-        internal void MoveActor(Actor actor, int x, int y)
+        public void MoveActor(Actor actor, int x, int y)
         {
-            Debug.Assert(Contains(actor));
-            Debug.Assert(CanEnter(x, y));
+            if (actor == null)
+            {
+                throw new ArgumentNullException(nameof(actor));
+            }
+
+            if (!IsInside(actor.X, actor.Y) || GetLivingActorAtOrNull(actor.X, actor.Y) != actor)
+            {
+                throw new ArgumentException("The actor must occupy a cell in this map.", nameof(actor));
+            }
+
+            if (!CanEnter(x, y))
+            {
+                throw new ArgumentException("The destination cell must be enterable.");
+            }
+
             GetCell(actor.X, actor.Y).LeaveActor(actor);
-            actor.MoveTo(x, y);
+            actor.SetPosition(x, y);
             GetCell(x, y).EnterActor(actor);
         }
 
-        internal void RemoveThing(Thing thing)
+        public void RemoveThing(Thing thing)
         {
+            if (thing == null)
+            {
+                throw new ArgumentNullException(nameof(thing));
+            }
+
             if (_things.Remove(thing))
             {
                 GetCell(thing.X, thing.Y).RemoveThing(thing);
+                thing.MapOrNull = null;
             }
         }
 

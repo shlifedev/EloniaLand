@@ -6,6 +6,7 @@
     <LangVersion Condition="'$(TargetFramework)' == 'net8.0'">12.0</LangVersion>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../Elonia.Simulation/Elonia.Simulation.csproj" />
     <ProjectReference Include="../HolySheet.Runtime/HolySheet.Runtime.csproj" />
     <PackageReference Include="MemoryPack" Version="1.22.0" />
   </ItemGroup>

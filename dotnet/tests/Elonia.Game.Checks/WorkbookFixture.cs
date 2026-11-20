@@ -17,6 +17,19 @@ internal static class WorkbookFixture
 {
     public static GameContent CreateContent(GameTables original, int healing)
     {
+        return CreateContent(new Dictionary<(string, string, string), string>
+        {
+            [("Item", "potion", "Amount")] = healing.ToString(CultureInfo.InvariantCulture),
+            [("Item", "branch", "Amount")] = "2",
+            [("TownLegend", "potion", "Symbol")] = original.TownLegend.Get("gold").Symbol,
+            [("TownLegend", "gold", "Symbol")] = original.TownLegend.Get("potion").Symbol,
+            [("Actor", "hero", "MaxHp")] = (healing + 5).ToString(CultureInfo.InvariantCulture),
+            [("Thing", "spike_trap", "StepDamage")] = (healing + 1).ToString(CultureInfo.InvariantCulture)
+        });
+    }
+
+    public static GameContent CreateContent(Dictionary<(string Sheet, string Id, string Field), string> cells)
+    {
         Workbook workbook = XlsxReader.Read(Path.Combine(AppContext.BaseDirectory, "Sheets", "Elonia.xlsx"));
         List<Sheet> editedSheets = new List<Sheet>();
         foreach (Sheet sheet in workbook.Sheets)
@@ -28,15 +41,10 @@ internal static class WorkbookFixture
                 for (int column = 0; column < grid[row].Length; column++)
                 {
                     string field = grid[1][column];
-                    grid[row][column] = (sheet.Name, id, field) switch
+                    if (cells.TryGetValue((sheet.Name, id, field), out string? value))
                     {
-                        ("Item", "potion", "Amount") => healing.ToString(CultureInfo.InvariantCulture),
-                        ("TownLegend", "potion", "Symbol") => original.TownLegend.Get("gold").Symbol,
-                        ("TownLegend", "gold", "Symbol") => original.TownLegend.Get("potion").Symbol,
-                        ("Actor", "hero", "MaxHp") => (healing + 5).ToString(CultureInfo.InvariantCulture),
-                        ("Thing", "spike_trap", "StepDamage") => (healing + 1).ToString(CultureInfo.InvariantCulture),
-                        _ => grid[row][column]
-                    };
+                        grid[row][column] = value;
+                    }
                 }
             }
 

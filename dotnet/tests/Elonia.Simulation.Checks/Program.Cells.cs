@@ -7,8 +7,8 @@ public static partial class Program
 {
     private static void CheckCells()
     {
-        PropType tree = new PropType("Tree", false);
-        FloorType dirt = new FloorType("Dirt", true);
+        TestPropDef tree = new TestPropDef("Tree", false);
+        TestFloorDef dirt = new TestFloorDef("Dirt", true);
         Map map = new Map(MAP_WIDTH, MAP_HEIGHT);
         map.SetFloor(2, 2, dirt);
         map.SetProp(2, 2, tree);
@@ -17,7 +17,7 @@ public static partial class Program
         CheckEqual(2, treeCell.X, "A cell knows its x.");
         CheckEqual(2, treeCell.Y, "A cell knows its y.");
         CheckEqual(dirt, treeCell.Floor, "A cell holds the floor set on the map.");
-        CheckEqual<PropType?>(tree, treeCell.PropOrNull, "A cell holds the prop set on the map.");
+        CheckEqual<IPropDef?>(tree, treeCell.PropOrNull, "A cell holds the prop set on the map.");
         Check(!treeCell.IsWalkable, "A cell with a blocking prop is not walkable.");
         CheckThrows<ArgumentOutOfRangeException>(() => map.GetCell(MAP_WIDTH, 0), "A cell outside the map cannot be read.");
 
@@ -25,7 +25,7 @@ public static partial class Program
         FixedController controller = new FixedController(WaitAction.DEFAULT);
         Actor npc = map.AddEntity(TestActors.Create(2, 6, 5, 10, controller));
         Thing gold = map.AddEntity(new Thing(101, TestItems.GOLD, 5, 5));
-        ThingType mark = new ThingType("Mark");
+        TestThingDef mark = new TestThingDef("Mark");
         Thing markThing = map.AddEntity(new Thing(102, mark, 5, 5));
         GameRunner runner = new GameRunner(new World(map), player);
 
@@ -35,29 +35,25 @@ public static partial class Program
         CheckEqual<Thing?>(gold, startCell.GetItemOrNull(), "A cell finds its item among its things.");
         CheckEqual(0, map.GetCell(0, 0).Things.Count, "An empty cell has no things.");
 
-        runner.SubmitPlayerAction(MoveAction.DOWN);
+        runner.SubmitPlayerAction(TestMoveAction.DOWN);
         CheckEqual<Actor?>(null, startCell.LivingActorOrNull, "The cell an actor left is empty.");
         CheckEqual<Actor?>(player, map.GetCell(5, 6).LivingActorOrNull, "The cell an actor entered holds it.");
         CheckEqual(2, startCell.Things.Count, "Things stay in their cell when an actor leaves.");
 
-        runner.SubmitPlayerAction(MoveAction.UP);
-        runner.SubmitPlayerAction(PickUpAction.DEFAULT);
+        runner.SubmitPlayerAction(TestMoveAction.UP);
+        map.RemoveThing(gold);
         CheckEqual<Thing?>(null, startCell.GetItemOrNull(), "A picked-up item leaves its cell.");
         CheckEqual(1, startCell.Things.Count, "Other things stay in the cell after a pick-up.");
         CheckEqual<Thing?>(markThing, startCell.Things[0], "The remaining thing is the one not picked up.");
 
         Cell npcCell = map.GetCell(6, 5);
-        while (npc.IsAlive)
-        {
-            runner.SubmitPlayerAction(new AttackAction(npc));
-        }
-
+        npc.TakeDamage(npc.Hp);
         CheckEqual<Actor?>(null, npcCell.LivingActorOrNull, "A dead actor no longer occupies its cell.");
         Check(npcCell.CanEnter, "A dead actor's cell can be entered.");
 
-        runner.SubmitPlayerAction(MoveAction.RIGHT);
+        runner.SubmitPlayerAction(TestMoveAction.RIGHT);
         CheckEqual<Actor?>(player, npcCell.LivingActorOrNull, "A living actor can stand where a dead one lies.");
-        runner.SubmitPlayerAction(MoveAction.RIGHT);
+        runner.SubmitPlayerAction(TestMoveAction.RIGHT);
         CheckEqual<Actor?>(null, npcCell.LivingActorOrNull, "Leaving a dead actor's cell leaves it empty.");
         CheckEqual<Actor?>(player, map.GetCell(7, 5).LivingActorOrNull, "The player is recorded in its new cell.");
     }

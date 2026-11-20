@@ -59,7 +59,7 @@ namespace Elonia.Game
             PlaceNpcs(content, layout, map, player, random);
             PlaceThings(content, layout, map);
 
-            return new GameSession(new GameRunner(new World(map), player), layout);
+            return new GameSession(new GameRunner(new World(map, content.Tables), player), layout);
         }
 
         private static Actor PlaceTerrainAndPlayer(GameContent content, IReadOnlyList<string> rows, Map map, TownLegendRow[,] layout)
@@ -76,20 +76,26 @@ namespace Elonia.Game
                 {
                     TownLegendRow legend = content.GetLegend(rows[y][x], x, y);
                     layout[y, x] = legend;
-                    map.SetFloor(x, y, content.GetFloor(legend.Floor.Key));
+                    map.SetFloor(x, y, content.Tables.Floor.Get(legend.Floor));
                     if (legend.Prop.HasValue)
                     {
-                        map.SetProp(x, y, content.GetProp(legend.Prop.Key));
+                        map.SetProp(x, y, content.Tables.Prop.Get(legend.Prop));
                     }
 
-                    if (legend.Actor.HasValue && content.GetActorRow(legend.Actor.Key).Behavior == EActorBehavior.Player)
+                    if (legend.Actor.HasValue)
                     {
+                        ActorRow row = content.Tables.Actor.Get(legend.Actor);
+                        if (row.Behavior != EActorBehavior.Player)
+                        {
+                            continue;
+                        }
+
                         if (playerOrNull != null)
                         {
                             throw new InvalidOperationException($"마을 지도에 플레이어 시작 지점이 둘 이상입니다. ({playerOrNull.X}, {playerOrNull.Y}), ({x}, {y})");
                         }
 
-                        playerOrNull = map.AddEntity(new Actor(map.CreateEntityID(), content.GetActor(legend.Actor.Key), x, y));
+                        playerOrNull = map.AddEntity(new Actor(map.CreateEntityID(), row, x, y));
                     }
                 }
             }
@@ -109,11 +115,11 @@ namespace Elonia.Game
                         continue;
                     }
 
-                    ActorRow row = content.GetActorRow(actor.Key);
+                    ActorRow row = content.Tables.Actor.Get(actor);
                     if (row.Behavior != EActorBehavior.Player)
                     {
                         Brain brain = CreateBrain(row, player, random);
-                        map.AddEntity(new Actor(map.CreateEntityID(), content.GetActor(row.Id), x, y, brain));
+                        map.AddEntity(new Actor(map.CreateEntityID(), row, x, y, brain));
                     }
                 }
             }
@@ -128,7 +134,7 @@ namespace Elonia.Game
                     ThingRef thing = layout[y, x].Thing;
                     if (thing.HasValue)
                     {
-                        map.AddEntity(new Thing(map.CreateEntityID(), content.GetThing(thing.Key), x, y));
+                        map.AddEntity(new Thing(map.CreateEntityID(), content.Tables.Thing.Get(thing), x, y));
                     }
                 }
             }

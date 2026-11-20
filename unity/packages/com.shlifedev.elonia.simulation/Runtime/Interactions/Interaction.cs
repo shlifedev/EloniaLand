@@ -1,3 +1,5 @@
+using System;
+
 namespace Elonia.Simulation
 {
     public readonly struct Interaction
@@ -16,7 +18,12 @@ namespace Elonia.Simulation
 
         internal Interaction(ActorAction action, int tileX, int tileY, int reach)
         {
-            Action = action;
+            if (reach < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(reach));
+            }
+
+            Action = action ?? throw new ArgumentNullException(nameof(action));
             TargetActorOrNull = null;
             Reach = reach;
             _tileX = tileX;
@@ -24,12 +31,9 @@ namespace Elonia.Simulation
         }
 
         internal Interaction(ActorAction action, Actor targetActor, int reach)
+            : this(action, 0, 0, reach)
         {
-            Action = action;
-            TargetActorOrNull = targetActor;
-            Reach = reach;
-            _tileX = targetActor.X;
-            _tileY = targetActor.Y;
+            TargetActorOrNull = targetActor ?? throw new ArgumentNullException(nameof(targetActor));
         }
 
         public bool IsInReach(Actor actor)

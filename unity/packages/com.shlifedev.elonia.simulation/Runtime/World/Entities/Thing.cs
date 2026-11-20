@@ -4,16 +4,16 @@ namespace Elonia.Simulation
 {
     public sealed class Thing : Entity
     {
-        public ThingType Type { get; }
+        public IThingDef Def { get; }
 
         public int Count { get; }
 
-        public Thing(int id, ThingType type, int x, int y, int count = 1)
+        public Thing(int id, IThingDef def, int x, int y, int count = 1)
             : base(id, x, y)
         {
-            if (type == null)
+            if (def == null)
             {
-                throw new ArgumentNullException(nameof(type));
+                throw new ArgumentNullException(nameof(def));
             }
 
             if (count <= 0)
@@ -21,7 +21,7 @@ namespace Elonia.Simulation
                 throw new ArgumentOutOfRangeException(nameof(count), "A thing count must be positive.");
             }
 
-            Type = type;
+            Def = def;
             Count = count;
         }
     }

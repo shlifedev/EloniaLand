@@ -179,7 +179,7 @@ namespace Elonia.Game
             for (int index = 0; index < actors.Count; index++)
             {
                 Actor actor = actors[index];
-                if (actor != targetOrNull && actor.IsAlive && actor.Type.IsThreat
+                if (actor != targetOrNull && actor.IsAlive && actor.Row().IsThreat()
                     && Math.Abs(actor.X - player.X) + Math.Abs(actor.Y - player.Y) <= ALERT_RANGE)
                 {
                     count++;

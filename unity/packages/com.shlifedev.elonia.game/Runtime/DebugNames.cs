@@ -1,4 +1,5 @@
 using Cysharp.Text;
+using Elonia.Data;
 using Elonia.Simulation;
 
 namespace Elonia.Game
@@ -7,12 +8,12 @@ namespace Elonia.Game
     {
         public static string GetActorName(Actor actor)
         {
-            return ZString.Concat(GetActorTypeName(actor.Type), " #", actor.ID);
+            return ZString.Concat(GetActorTypeName(actor.Row()), " #", actor.ID);
         }
 
-        public static string GetActorTypeName(ActorType type)
+        public static string GetActorTypeName(ActorRow row)
         {
-            return GameText.GetActorTypeName(type);
+            return GameText.GetActorTypeName(row);
         }
 
         public static string GetBehaviorName(IBehavior behavior)
@@ -51,19 +52,19 @@ namespace Elonia.Game
             }
         }
 
-        public static string GetFloorName(FloorType type)
+        public static string GetFloorName(FloorRow row)
         {
-            return GameText.GetFloorName(type);
+            return GameText.GetFloorName(row);
         }
 
-        public static string GetPropName(PropType type)
+        public static string GetPropName(PropRow row)
         {
-            return GameText.GetPropName(type);
+            return GameText.GetPropName(row);
         }
 
         public static string GetThingName(Thing thing)
         {
-            return GameText.GetThingName(thing.Type);
+            return GameText.GetThingName(thing.Row());
         }
 
         private static string GetDirectionName(int deltaX, int deltaY)

@@ -43,7 +43,7 @@ internal sealed partial class Debugger
                 ImGui.TableNextColumn();
                 ImGui.TextUnformatted(ZString.Concat(row.Actor.Energy));
                 ImGui.TableNextColumn();
-                ImGui.TextUnformatted(ZString.Concat(row.Actor.Type.Speed));
+                ImGui.TextUnformatted(ZString.Concat(row.Actor.Def.Speed));
                 ImGui.TableNextColumn();
                 ImGui.TextUnformatted(GetCurrentBehaviorName(row.Actor));
             }
@@ -99,7 +99,7 @@ internal sealed partial class Debugger
                 ImGui.TableNextColumn();
                 ImGui.TextUnformatted(ZString.Format("({0}, {1})", actor.X, actor.Y));
                 ImGui.TableNextColumn();
-                ImGui.TextUnformatted(actor.IsAlive ? ZString.Concat(actor.Hp, "/", actor.Type.MaxHp) : "사망");
+                ImGui.TextUnformatted(actor.IsAlive ? ZString.Concat(actor.Hp, "/", actor.Def.MaxHp) : "사망");
                 ImGui.TableNextColumn();
                 ImGui.TextUnformatted(GetCurrentBehaviorName(actor));
             }
@@ -125,11 +125,11 @@ internal sealed partial class Debugger
             ImGui.TableSetupColumn("값");
             DrawRow("상태", actor.IsAlive ? "생존" : "사망");
             DrawRow("위치", ZString.Format("({0}, {1})", actor.X, actor.Y));
-            DrawBarRow("체력", (float)actor.Hp / actor.Type.MaxHp, ZString.Concat(actor.Hp, " / ", actor.Type.MaxHp));
+            DrawBarRow("체력", (float)actor.Hp / actor.Def.MaxHp, ZString.Concat(actor.Hp, " / ", actor.Def.MaxHp));
             DrawBarRow("에너지", Math.Min(1.0f, (float)actor.Energy / GameRunner.READY_ENERGY),
                 ZString.Concat(actor.Energy, " / ", GameRunner.READY_ENERGY));
-            DrawRow("속도", ZString.Format("{0} (틱당 에너지, 보통 100)", actor.Type.Speed));
-            DrawRow("공격력", ZString.Concat(actor.Type.AttackPower));
+            DrawRow("속도", ZString.Format("{0} (틱당 에너지, 보통 100)", actor.Def.Speed));
+            DrawRow("공격력", ZString.Concat(actor.Row().Attack));
             DrawRow("행동 횟수", ZString.Concat(actor.ActionCount));
             DrawRow("골드", ZString.Concat(actor.Gold));
             DrawRow("조종", GetControllerName(actor));
