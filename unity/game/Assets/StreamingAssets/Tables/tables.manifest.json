@@ -1,11 +1,11 @@
 {
   "holysheet": 1,
   "serializer": "memorypack",
-  "schema": "beb1d68525bb449ef0df5e02d96ca18d0cb52210c0a2d7ec54cb4218c08927a8",
-  "content": "f8dba10dba554e148b00ef126ebc4496d7aa596dca89db83b2242b23b912bf33",
+  "schema": "87c2358fcc92d1440da330b9fc09c2f6e13f43eb20732ac4815c056036ac8c04",
+  "content": "c889974b3ccc831227b9fad28d91d57642b17ea4865a9060a4bafbec2a3bdd9e",
   "tool": "holysheet/2.0.0",
   "tables": [
-    { "name": "Actor", "file": "Actor.bytes", "rows": 5, "bytes": 225, "hash": "75d0cb867202f11dc89a8f3a22a7401c4de91e0994042ad478294c7ff963086c", "schema": "61d87b82522d57941a25dbe76eccefc7064efabc232c177a5fd3cf69b3ac9000" },
+    { "name": "Actor", "file": "Actor.bytes", "rows": 5, "bytes": 278, "hash": "17eca23121a97abc14ed62fde0bcb8eebe5b03819f7f5585abe8faf3d385b6be", "schema": "26885dd2fbf8b3a119dd75e7f3e6d9cd61c87303996b85cecd31aec259cd9738" },
     { "name": "Floor", "file": "Floor.bytes", "rows": 4, "bytes": 121, "hash": "5e9739b4cd2a4c048196648e0703fad03cae2e87a9565ca53f459cbbc1b86c8f", "schema": "b6cf4f5de791abdee4cfab9db80438d03cdc0eaade22ef6ca3bae1a65c534942" },
     { "name": "Item", "file": "Item.bytes", "rows": 3, "bytes": 62, "hash": "214b8c7b6f2dc991549361d95d8575e1e1781c2625ec226e7049945488810eda", "schema": "409ac9c2e3eb3d31c2da730f4d80fed1d33adb152e9439101d2849a08f1a49f1" },
     { "name": "Prop", "file": "Prop.bytes", "rows": 9, "bytes": 339, "hash": "8091cb9d27f24d202b0d84d459ea55254f90d163d3673efd9e9d3450cefd2561", "schema": "0a278d666125e5e7045a86a438c0a778f3abeca09f147c4af9f0d365fcec1bfe" },

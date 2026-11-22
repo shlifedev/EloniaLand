@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Elonia.Commands\Elonia.Commands.csproj" />
+    <ProjectReference Include="..\Elonia.Data\Elonia.Data.csproj" />
+    <ProjectReference Include="..\Elonia.Events\Elonia.Events.csproj" />
+    <ProjectReference Include="..\Elonia.Simulation\Elonia.Simulation.csproj" />
+    <ProjectReference Include="..\HolySheet.Runtime\HolySheet.Runtime.csproj" />
+  </ItemGroup>
+
+</Project>

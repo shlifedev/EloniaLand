@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TieredCompilation>false</TieredCompilation>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Elonia.Game/Elonia.Game.csproj" />
+    <ProjectReference Include="$(HolySheetRoot)/dotnet/HolySheet.Core/HolySheet.Core.csproj" />
+    <None Include="../../../data/Sheets/Elonia.xlsx" Link="Sheets/Elonia.xlsx" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="SaveFixtures/**/*.sav" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../../holysheet.json" Link="holysheet.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

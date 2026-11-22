@@ -6,7 +6,7 @@
     }
   ],
   "output": {
-    "code": "unity/packages/com.shlifedev.elonia.data/Runtime/Generated",
+    "code": "unity/game/Assets/Elonia/Scripts/Elonia.Data/Generated",
     "data": "unity/game/Assets/StreamingAssets/Tables",
     "schema": false
   },
